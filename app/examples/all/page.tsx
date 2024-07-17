@@ -37,13 +37,13 @@ const FunctionCalling = () => {
   //     </div>
   //   </main>
   // );
-
+  const tempfunc = (status) => { }
   return (
     <main className={styles.main}>
       <div className={styles.container}>
         <div className={styles.column}>
           <WeatherWidget {...weatherData} />
-          <FileViewer titletext={"Attach files to test file search"} />
+          <FileViewer onFileStatus={tempfunc} titletext={"Attach files to test file search"} />
         </div>
         <div className={styles.chatContainer}>
           <div className={styles.chat}>

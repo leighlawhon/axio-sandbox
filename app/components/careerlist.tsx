@@ -34,18 +34,23 @@ const CareerList: React.FC<CareerListProps> = ({ careers }) => {
         }
     }, [careers]);
     // const parseCareers = (): string => {
+    const exploreMore = async (title: string) => {
 
+    }
     return (
         <div>
             <h2>Career List</h2>
-            <ul>
+            <div className="flex">
                 {parsedCareers.map((_career, _index) => {
                     return (
-                        <li key={`career-${_index}`}>{_career.career}</li>
+                        <>
+                            <div key={`career-${_index}`}>{_career.career}</div>
+                            <button onClick={() => exploreMore(_career.career)}>Explore This Career</button>
+                        </>
                     )
                 })
                 }
-            </ul>
+            </div>
         </div>
     );
 };
