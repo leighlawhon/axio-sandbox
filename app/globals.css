@@ -71,3 +71,11 @@ pre {
   background-color: #e4e4e4;
   color: black;
 }
+
+.hide {
+  display: none;
+}
+
+.show {
+  display: flex;
+}

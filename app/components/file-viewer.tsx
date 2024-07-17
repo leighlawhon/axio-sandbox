@@ -18,24 +18,34 @@ const TrashIcon = () => (
   </svg>
 );
 
-const FileViewer = () => {
+const FileViewer = ({ titletext, onFileStatus }: { titletext: string, onFileStatus: (status) => void }) => {
   const [files, setFiles] = useState([]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchFiles();
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+  const [filestatus, setFilesStatus] = useState('');
+  const [disableButton, setDisableButton] = useState(false);
 
   const fetchFiles = async () => {
     const resp = await fetch("/api/assistants/files", {
       method: "GET",
     });
     const data = await resp.json();
+    console.log("____________________")
     setFiles(data);
+
   };
+
+  useEffect(() => {
+    fetchFiles();
+  }, []);
+
+  useEffect(() => {
+    if (files.length !== 0) {
+      setDisableButton(true)
+      setFilesStatus(files[0].status);
+      onFileStatus(filestatus); // Invoke the callback with the status
+    }
+  }, [files]);
+
+
 
   const handleFileDelete = async (fileId) => {
     await fetch("/api/assistants/files", {
@@ -52,7 +62,9 @@ const FileViewer = () => {
       method: "POST",
       body: data,
     });
+    fetchFiles();
   };
+
 
   return (
     <div className={styles.fileViewer}>
@@ -62,7 +74,7 @@ const FileViewer = () => {
         }`}
       >
         {files.length === 0 ? (
-          <div className={styles.title}>Attach files to test file search</div>
+          <div className={styles.title}>{titletext}</div>
         ) : (
           files.map((file) => (
             <div key={file.file_id} className={styles.fileEntry}>
@@ -77,18 +89,21 @@ const FileViewer = () => {
           ))
         )}
       </div>
-      <div className={styles.fileUploadContainer}>
+      <div className={`${disableButton ? 'hide' : 'show'}`}>
+        <div className={`${styles.fileUploadContainer} `}>
         <label htmlFor="file-upload" className={styles.fileUploadBtn}>
           Attach files
         </label>
         <input
           type="file"
+            disabled={disableButton}
           id="file-upload"
           name="file-upload"
           className={styles.fileUploadInput}
           multiple
           onChange={handleFileUpload}
         />
+        </div>
       </div>
     </div>
   );
