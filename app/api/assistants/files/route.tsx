@@ -20,6 +20,7 @@ export async function POST(request) {
   return new Response();
 }
 
+
 // list files in assistant's vector store
 export async function GET() {
   const vectorStoreId = await getOrCreateVectorStore(); // get or create vector store

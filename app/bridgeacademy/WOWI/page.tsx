@@ -5,8 +5,7 @@ import styles from "./page.module.css"; // use simple styles for demonstration p
 import Chat from "../../components/chat";
 import FileViewer from "@/app/components/file-viewer";
 import { AssistantStream } from "openai/lib/AssistantStream";
-import ChatCareer from "@/app/components/chat_career";
-
+import ChatCareer from "@/app/components/career-getter";
 const WOWI = () => {
     const [showUI, setShowUI] = useState<boolean>(false);
 
@@ -16,18 +15,20 @@ const WOWI = () => {
         // You can now use the file status in page.tsx
     };
     return (
+
         <main className={styles.main}>
-            <div className={styles.column}>
+            <div className={`p-3 w-72 text-center m-auto`}>
                 <FileViewer titletext="Attach WOWI Results" onFileStatus={handleFileStatus} />
             </div>
             {showUI && (
-                <div className={styles.chatContainer}>
+                <div >
                     <div className={styles.chat}>
                         <ChatCareer />
                     </div>
                 </div>
             )}
         </main>
+
     );
 };
 

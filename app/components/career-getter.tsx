@@ -7,91 +7,68 @@ import Markdown from "react-markdown";
 // @ts-expect-error - no types for this yet
 import { AssistantStreamEvent } from "openai/resources/beta/assistants/assistants";
 import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/runs/runs";
-import CareerList from "./careerlist";
+import CareerDisplay from "./career-display";
 import Spinner from "./spinner";
+import { Tabs } from "@radix-ui/themes";
+import CareerTabs from "./careers-tabs";
+// import { UserMessage, AssistantMessage, CodeMessage } from "./career-ui-ele";
 
 type MessageProps = {
   role: "user" | "assistant" | "code";
   text: string;
 };
 
-const UserMessage = ({ text }: { text: string }) => {
-  return <div className={styles.userMessage}>{text}</div>;
-};
 
-const AssistantMessage = ({ text }: { text: string }) => {
-  return (
-    <div className={styles.assistantMessage}>
-      <Markdown>{text}</Markdown>
-    </div>
-  );
-};
-
-const CodeMessage = ({ text }: { text: string }) => {
-  return (
-    <div className={styles.codeMessage}>
-      {text.split("\n").map((line, index) => (
-        <div key={index}>
-          <span>{`${index + 1}. `}</span>
-          {line}
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const Message = ({ role, text }: MessageProps) => {
-  switch (role) {
-    case "user":
-      return <UserMessage text={text} />;
-    case "assistant":
-      return <AssistantMessage text={text} />;
-    case "code":
-      return <CodeMessage text={text} />;
-    default:
-      return null;
-  }
-};
-
-type ChatProps = {
+type CareerGetterProps = {
   functionCallHandler?: (
     toolCall: RequiredActionFunctionToolCall
   ) => Promise<string>;
 };
 
-const ChatCareer = ({
+const CareerGetter = ({
   functionCallHandler = () => Promise.resolve(""), // default to return empty string
-}: ChatProps) => {
+}: CareerGetterProps) => {
   const [userInput, setUserInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [inputDisabled, setInputDisabled] = useState(false);
   const [threadId, setThreadId] = useState("");
   const [careers, setCareers] = useState([]);
   const [messageDone, setMessageDone] = useState(false);
+  const [startSpinner, setStartSpinner] = useState(false);
 
   // automatically scroll to bottom of chat
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+  //send message for career to assistant
   const handleGetCareers = async () => {
+    setStartSpinner(true);
     const response = await fetch(
       `/api/assistants/threads/${threadId}/messages`,
       {
         method: "POST",
         body: JSON.stringify({
-          content: "based on my profile, proivde me with a list of 3 careers in JSON format only, without",
+          content: `based on my profile from the uploaded document, proivde me with 3 careers that I would be good at. Do not include comments or expalantions. Only return a JSON format. Each career should be in the following JSON format: 
+          - 'career_name': string, 
+          - 'education': string,
+          - 'field_of_study': array,
+          - 'skills': array,
+          - 'job_outlook':string,
+          - 'median_salary': string}`,
         }),
       }
     );
     const stream = AssistantStream.fromReadableStream(response.body);
-    handleReadableStreamCareer(stream);
+    handleReadableStream(stream);
   }
+
 
   useEffect(() => {
     messageDone ? setCareers(messages) : null;
+    console.log(messages, 'CAREER GETTER !!!!!!');
     scrollToBottom();
-  }, [messages]);
+  }, [messageDone]);
 
   // create a new threadID when chat component created
   useEffect(() => {
@@ -104,20 +81,6 @@ const ChatCareer = ({
     };
     createThread();
   }, []);
-
-  const sendMessage = async (text) => {
-    const response = await fetch(
-      `/api/assistants/threads/${threadId}/messages`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          content: text,
-        }),
-      }
-    );
-    const stream = AssistantStream.fromReadableStream(response.body);
-    handleReadableStream(stream);
-  };
 
   const submitActionResult = async (runId, toolCallOutputs) => {
     const response = await fetch(
@@ -137,19 +100,6 @@ const ChatCareer = ({
     handleReadableStream(stream);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!userInput.trim()) return;
-    sendMessage(userInput);
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      { role: "user", text: userInput },
-    ]);
-    setUserInput("");
-    setInputDisabled(true);
-    scrollToBottom();
-  };
-
   /* Stream Event Handlers */
 
   // textCreated - create new assistant message
@@ -161,22 +111,6 @@ const ChatCareer = ({
   const handleTextDelta = (delta) => {
     if (delta.value != null) {
       appendToLastMessage(delta.value);
-    };
-    if (delta.annotations != null) {
-      annotateLastMessage(delta.annotations);
-    }
-  };
-
-  const handleTextCareerCreated = () => {
-    appendMessage("assistant", "");
-  };
-
-
-  // textDelta - append text to last assistant message
-  const handleTextCareerDelta = (delta) => {
-    if (delta.value != null) {
-      appendToLastMessage(delta.value);
-
     };
     if (delta.annotations != null) {
       annotateLastMessage(delta.annotations);
@@ -221,21 +155,16 @@ const ChatCareer = ({
   // handleRunCompleted - re-enable the input form
   const handleRunCompleted = () => {
     setInputDisabled(false);
-  };
-  const runDone = async () => {
-    console.log('ENDDONE!!!!!!');
+    setStartSpinner(false);
     setMessageDone(true);
-    console.log(messages, "chat");
-  }
-
+    console.log('ENDDONE!!!!!!');
+  };
 
   const handleReadableStream = (stream: AssistantStream) => {
     // messages
     stream.on("textCreated", handleTextCreated);
     stream.on("textDelta", handleTextDelta);
 
-
-
     // image
     stream.on("imageFileDone", handleImageFileDone);
 
@@ -251,26 +180,8 @@ const ChatCareer = ({
     });
   };
 
-  const handleReadableStreamCareer = (stream: AssistantStream) => {
-    // messages
-    stream.on("textCreated", handleTextCareerCreated);
-    stream.on("textDelta", handleTextCareerDelta);
-    stream.on("end", runDone);
 
-    // image
-    stream.on("imageFileDone", handleImageFileDone);
 
-    // code interpreter
-    stream.on("toolCallCreated", toolCallCreated);
-    stream.on("toolCallDelta", toolCallDelta);
-
-    // events without helpers yet (e.g. requires_action and run.done)
-    stream.on("event", (event) => {
-      if (event.event === "thread.run.requires_action")
-        handleRequiresAction(event);
-      if (event.event === "thread.run.completed") handleRunCompleted();
-    });
-  };
   /*
     =======================
     === Utility Helpers ===
@@ -313,36 +224,12 @@ const ChatCareer = ({
   }
 
   return (
-    <div className={styles.chatContainer}>
-      {/* <div className={styles.messages}>
-        {messages.map((msg, index) => (
-          <Message key={index} role={msg.role} text={msg.text} />
-        ))}
-        <div ref={messagesEndRef} />
-      </div> */}
-      {/* <form
-        onSubmit={handleSubmit}
-        className={`${styles.inputForm} ${styles.clearfix}`}
-      >
-        <input
-          type="text"
-          className={styles.input}
-          value={userInput}
-          onChange={(e) => setUserInput(e.target.value)}
-          placeholder="Enter your question"
-        />
-        <button
-          type="submit"
-          className={styles.button}
-          disabled={inputDisabled}
-        >
-          Send
-        </button>
-      </form> */}
-      <button onClick={handleGetCareers}>Get Career list</button>
-      {messageDone ? <CareerList careers={messages} /> : <Spinner />}
+    <div className="grid item-center">
+      <button className={"row-1 bg-blue-500 p-3 m-auto rounded-lg text-white"} onClick={handleGetCareers}>Recommend Jobs</button>
+      {messageDone ? <CareerDisplay careers={messages} /> : startSpinner ? <div className="flex justify-center"><Spinner /></div> : null}
+
     </div>
   );
 };
 
-export default ChatCareer;
+export default CareerGetter;

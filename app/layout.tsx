@@ -1,23 +1,30 @@
+
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Warnings from "./components/warnings";
-import { assistantId } from "./assistant-config";
+import "./header.css";
+
+import Header from "./components/header";
+import { AppStateProvider } from "./components/app-state-provider";
+import { ThemeProvider } from "next-themes";
+import '@radix-ui/themes/styles.css';
+import { Theme } from '@radix-ui/themes';
+
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata = {
-  title: "Assistants API Quickstart",
-  description: "A quickstart template using the Assistants API with OpenAI",
-  icons: {
-    icon: "/openai.svg",
-  },
-};
-
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+
       <body className={inter.className}>
-        {assistantId ? children : <Warnings />}
-        <img className="logo" src="/openai.svg" alt="OpenAI Logo" />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Header title="Axio Sandbox" />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
