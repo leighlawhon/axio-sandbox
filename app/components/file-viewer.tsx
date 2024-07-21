@@ -24,13 +24,20 @@ const FileViewer = ({ titletext, onFileStatus }: { titletext: string, onFileStat
   const [disableButton, setDisableButton] = useState(false);
 
   const fetchFiles = async () => {
-    const resp = await fetch("/api/assistants/files", {
-      method: "GET",
-    });
-    const data = await resp.json();
-    console.log("____________________")
-    setFiles(data);
-
+    try {
+      const resp = await fetch("/api/assistants/files", {
+        method: "GET",
+      });
+      if (!resp.ok) {
+        console.log(resp, "____________________")
+        throw new Error("Network response was not ok");
+      }
+      const data = await resp.json();
+      setFiles(data);
+    } catch (error) {
+      console.error("Error fetching files:", error);
+      // Handle the error here, e.g. show an error message to the user
+    }
   };
 
   useEffect(() => {

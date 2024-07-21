@@ -7,8 +7,13 @@ export const addQuotesToKeys = (text: string): string => {
 };
 // chat cleaner
 export const stripMarkdown = (text: string): string => {
+    if (text.startsWith('```json\n') && text.endsWith('```')) {
+        // console.log('json\n:', text, text.slice(8, -3), text.slice(7, -2));
+        return text.slice(8, -3);
+    }
     if (text.startsWith('```json') && text.endsWith('```')) {
-        return text.slice(7, -3);
+        // console.log('```json:', text);
+        return text.slice(6, -3);
     }
     return text;
 };
@@ -104,3 +109,7 @@ export const transformData = (text: string): any | any[] => {
         return <div></div>;
     }
 };
+
+//CALLS
+
+

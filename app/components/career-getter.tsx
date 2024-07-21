@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, use } from "react";
 import styles from "./chat.module.css";
 import { AssistantStream } from "openai/lib/AssistantStream";
 import Markdown from "react-markdown";
@@ -10,7 +10,8 @@ import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/ru
 import CareerDisplay from "./career-display";
 import Spinner from "./spinner";
 import { Tabs } from "@radix-ui/themes";
-import CareerTabs from "./careers-tabs";
+import CareerTabs from "./career-tabs";
+import { stripMarkdown } from "../utils/career-utlities";
 // import { UserMessage, AssistantMessage, CodeMessage } from "./career-ui-ele";
 
 type MessageProps = {
@@ -33,54 +34,144 @@ const CareerGetter = ({
   const [inputDisabled, setInputDisabled] = useState(false);
   const [threadId, setThreadId] = useState("");
   const [careers, setCareers] = useState([]);
+  const [careertitles, setCareertitles] = useState([]);
+  const [careerContents, setCareerContents] = useState(Array<object>);
+  const [goodatContents, setGoodatContents] = useState(Array<object>);
   const [messageDone, setMessageDone] = useState(false);
+  const [callTypeProp, setCallTypeProp] = useState('');
   const [startSpinner, setStartSpinner] = useState(false);
 
   // automatically scroll to bottom of chat
+
+  // create a new threadID when chat component created
+  useEffect(() => {
+    const createThread = async () => {
+      try {
+        const res = await fetch(`/api/assistants/threads`, {
+          method: "POST",
+        });
+        const data = await res.json();
+        setThreadId(data.threadId);
+      } catch (error) {
+        alert("Something wonky here. Try again. It will work.");
+        console.error("Error creating thread:", error);
+      }
+    };
+    createThread();
+    console.log("NEW THREAD!!!!!!", threadId, "test");
+  }, []);
+  useEffect(() => {
+    console.log(messageDone, callTypeProp, messages, 'MESSAGE DONE!!!!!!');
+    if (messageDone && callTypeProp === 'GETCAREERS') {
+      const strippedtext = stripMarkdown(messages[messages.length - 1].text);
+      // apparently if there is only 1 item, JSON parse will mapping will return obj, rather than [obj]
+      const careerparsed = JSON.parse(strippedtext);
+      console.log(careerparsed, 'CAREER MESSAGE!!!!!!');
+      setCareers(careerparsed);
+      setCareertitles(careerparsed.map((career) => {
+        return career.career_name
+      }));
+      setCareerContents((prevCareerContents) => [
+        ...prevCareerContents,
+        careerparsed
+      ]);
+    };
+    if (messageDone && callTypeProp === 'GETGOODAT') {
+      console.log(messages, messages.length, 'GOOD AT MESSAGE!!!!!!');
+      const strippedtext = stripMarkdown(messages[messages.length - 1].text);
+      const goodAtParsed = JSON.parse(strippedtext);
+      setGoodatContents((prevGoodAtContents) => [
+        ...prevGoodAtContents,
+        goodAtParsed
+      ]);
+    };
+    scrollToBottom();
+  }, [messageDone, callTypeProp]);
+  useEffect(() => {
+    handleGetGoodAt
+  }, []);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
   //send message for career to assistant
+  // content: `based on my career choice of ${careertitle} and my uploaded profile, proivde me with a list of reasons I would be good at this job, in an Arrray format with items in a String format only, without markdown. Only return an Array format. Do not include comments or expalantions.`,
+
   const handleGetCareers = async () => {
-    setStartSpinner(true);
-    const response = await fetch(
-      `/api/assistants/threads/${threadId}/messages`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          content: `based on my profile from the uploaded document, proivde me with 3 careers that I would be good at. Do not include comments or expalantions. Only return a JSON format. Each career should be in the following JSON format: 
-          - 'career_name': string, 
-          - 'education': string,
-          - 'field_of_study': array,
-          - 'skills': array,
-          - 'job_outlook':string,
-          - 'median_salary': string}`,
-        }),
-      }
-    );
-    const stream = AssistantStream.fromReadableStream(response.body);
-    handleReadableStream(stream);
+    try {
+      console.log("GET CAREERS CALL!!!!!!", threadId, "test");
+
+      setStartSpinner(true);
+      const response = await fetch(
+        `/api/assistants/threads/${threadId}/messages`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            content: `based on my profile from the uploaded document, proivde me with a list of 2 careers that I would be good at. Do not include comments or expalantions. Only return a JSON format. Each career should be in the following JSON format: 
+            [ 
+              {
+                'career_name': string,
+                'education': string,
+                'field_of_study': array,
+                'skills': array,
+                'job_outlook':string,
+                'median_salary': string},
+              }
+            ]`
+
+
+          }),
+        }
+      );
+      const stream = AssistantStream.fromReadableStream(response.body);
+      handleReadableStream(stream, "GETCAREERS");
+    } catch (error) {
+      console.error("Error getting careers:", error);
+    }
   }
 
+  const handleGetGoodAt = async (careertitle: string) => {
+    try {
+      console.log('GOOD AT CALL!!!!!!');
+      setStartSpinner(true);
+      const response = await fetch(
+        `/api/assistants/threads/${threadId}/messages`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            content: `based on my career choice of ${careertitle} and my uploaded profile, proivde me with a list of reasons I would be good at this job, in an Arrray format with items in a String format only, without markdown. Only return an Array format. Do not include comments or expalantions.`,
+          }),
+        }
+      );
+      const stream = AssistantStream.fromReadableStream(response.body);
+      handleReadableStream(stream, "GETGOODAT");
+    } catch (error) {
+      console.error("Error getting career good at:", error);
+    }
+  }
+  const handleGetCareerReq = async (careertitle: string) => {
+    try {
+      console.log('REQ CALL!!!!!!');
+      setStartSpinner(true);
+      const response = await fetch(
+        `/api/assistants/threads/${threadId}/messages`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            content: `based on my career choice of ${careertitle} proivde me with a list of the characteristics that are required for this career. The characteristics for the career should be chosen from those that are in my uploaded profile. The my_score value should be the value from my uploaded profile. The career_score should be the 100 - my_score. Do not include comments or expalantions. Only return a JSON format. Each characteristic should be in the following JSON format:  
+                          - "characteristic": string, 
+                          - "my_score": number
+                          - "career_score": number`
+          }),
+        }
+      );
+      const stream = AssistantStream.fromReadableStream(response.body);
+      handleReadableStream(stream, "GETREQ");
+    } catch (error) {
+      console.error("Error getting career requirements:", error);
+    }
+  }
 
-  useEffect(() => {
-    messageDone ? setCareers(messages) : null;
-    console.log(messages, 'CAREER GETTER !!!!!!');
-    scrollToBottom();
-  }, [messageDone]);
-
-  // create a new threadID when chat component created
-  useEffect(() => {
-    const createThread = async () => {
-      const res = await fetch(`/api/assistants/threads`, {
-        method: "POST",
-      });
-      const data = await res.json();
-      setThreadId(data.threadId);
-    };
-    createThread();
-  }, []);
 
   const submitActionResult = async (runId, toolCallOutputs) => {
     const response = await fetch(
@@ -99,9 +190,11 @@ const CareerGetter = ({
     const stream = AssistantStream.fromReadableStream(response.body);
     handleReadableStream(stream);
   };
-
-  /* Stream Event Handlers */
-
+  /*
+      =======================
+      === STREAM EVENTS ===
+      =======================
+    */
   // textCreated - create new assistant message
   const handleTextCreated = () => {
     appendMessage("assistant", "");
@@ -157,10 +250,10 @@ const CareerGetter = ({
     setInputDisabled(false);
     setStartSpinner(false);
     setMessageDone(true);
-    console.log('ENDDONE!!!!!!');
   };
 
-  const handleReadableStream = (stream: AssistantStream) => {
+  const handleReadableStream = (stream: AssistantStream, callType?: string) => {
+    callType ? setCallTypeProp(callType) : setCallTypeProp('DEFAULT');
     // messages
     stream.on("textCreated", handleTextCreated);
     stream.on("textDelta", handleTextDelta);
@@ -226,8 +319,15 @@ const CareerGetter = ({
   return (
     <div className="grid item-center">
       <button className={"row-1 bg-blue-500 p-3 m-auto rounded-lg text-white"} onClick={handleGetCareers}>Recommend Jobs</button>
-      {messageDone ? <CareerDisplay careers={messages} /> : startSpinner ? <div className="flex justify-center"><Spinner /></div> : null}
-
+      {messageDone}
+      {/* {messageDone ? <CareerDisplay handleGetGoodAt={handleGetGoodAt} careers={careers} handleGetCareerReq={handleGetCareerReq} /> : startSpinner ? <div className="flex justify-center"><Spinner /></div> : null} */}
+      {messageDone && careertitles ? <CareerTabs
+        tabArr={careertitles}
+        careerContents={careerContents}
+        goodAtContents={goodatContents}
+        handleGetCareerReq={handleGetCareerReq}
+        handleGetGoodAt={handleGetGoodAt} />
+        : startSpinner ? <div className="flex justify-center"><Spinner /></div> : null}
     </div>
   );
 };

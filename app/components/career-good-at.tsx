@@ -21,11 +21,11 @@ const GoodAt = ({
     functionCallHandler = () => Promise.resolve(""), // default to return empty string
 }: GoodAtProps) => {
     const [messages, setMessages] = useState([]);
-    const [threadId, setThreadId] = useState("");
+    const [threadId, setThreadId] = useState(null);
     const [goodAt, setGoodAt] = useState<any>();
     const [messageDone, setMessageDone] = useState(false);
     const [startSpinner, setStartSpinner] = useState(false);
-
+    console.log(goodAt, careertitle, threadId, 'GOODAT!!!!!!');
     //send message for career to assistant
     const handleWhyWouldIBeGood = async () => {
         setStartSpinner(true);
@@ -55,8 +55,11 @@ const GoodAt = ({
             const data = await res.json();
             setThreadId(data.threadId);
         };
-        createThread();
-    }, []);
+        if (careertitle && !threadId) { // Add condition to check if threadId is already set
+            createThread();
+            console.log(threadId, careertitle, 'THREADID!!!!!!');
+        }
+    }, [careertitle, threadId]); // Add threadId as a dependency
 
     const parseMessages = (messages) => {
         const parsed = JSON.parse(stripMarkdown(messages[messages.length - 1].text));
@@ -205,7 +208,6 @@ const GoodAt = ({
 
     return (
         <div className="">
-            <button className={`bg-blue-400 p-2 text-white rounded-lg`} onClick={handleWhyWouldIBeGood}>My Strengths</button>
             {messageDone && goodAt ?
                 <div>
                     <ul>{goodAt.map((item, i) => {

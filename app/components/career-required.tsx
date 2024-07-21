@@ -12,6 +12,7 @@ import CareerBarChart from "./bar-chart";
 
 type CharacterReqtProps = {
     careertitle: string;
+    handleGetCareerReq: (careertitle: string) => void;
     functionCallHandler?: (
         toolCall: RequiredActionFunctionToolCall
     ) => Promise<string>;
@@ -19,26 +20,30 @@ type CharacterReqtProps = {
 
 const CharacterrReq = ({
     careertitle,
+    handleGetCareerReq,
     functionCallHandler = () => Promise.resolve(""), // default to return empty string
 }: CharacterReqtProps) => {
     const [messages, setMessages] = useState([]);
     const [threadId, setThreadId] = useState("");
     const [characterReq, setCharacterReq] = useState<any>([]);
+    const [messageParsed, setMessageParsed] = useState<any>([]);
     const [messageDone, setMessageDone] = useState(false);
     const [startSpinner, setStartSpinner] = useState(false);
 
     useEffect(() => {
-        // Create a new threadID when the chat component is created
         const createThread = async () => {
             const res = await fetch(`/api/assistants/threads`, {
                 method: "POST",
             });
             const data = await res.json();
             setThreadId(data.threadId);
+            console.log(data, careertitle, 'THREADID!!!!!!');
         };
+        if (careertitle !== "") {
+            createThread();
+        }
+    }, []);
 
-        createThread();
-    }, [careertitle]);
     useEffect(() => {
         const fetchData = async () => {
             setStartSpinner(true);
@@ -47,29 +52,37 @@ const CharacterrReq = ({
                 {
                     method: "POST",
                     body: JSON.stringify({
-                        content: `based on my career choice of ${careertitle} proivde me with a list of the characteristics that are required for this career. The traits and characteristics for the career should be chosen from those that are in my uploaded profile. The my_score value should be the value from my uploaded profile. The career_score should be the 100 - my_score Do not include comments or expalantions. Only return a JSON format. Each career should be in the following JSON format:  
+                        content: `based on my career choice of ${careertitle} proivde me with a list of the characteristics that are required for this career. The characteristics for the career should be chosen from those that are in my uploaded profile. The my_score value should be the value from my uploaded profile. The career_score should be the 100 - my_score. Do not include comments or expalantions. Only return a JSON format. Each characteristic should be in the following JSON format:  
                         - "characteristic": string, 
                         - "my_score": number
                         - "career_score": number`
                     }),
                 }
             );
+            console.log(response.body, 'RESPONSE BODY!!!!!!');
             const stream = AssistantStream.fromReadableStream(response.body);
             handleReadableStream(stream);
         };
-        threadId !== '' ? fetchData() : null;
+        if (threadId !== "") {
+            fetchData();
+        }
     }, [threadId]);
 
     useEffect(() => {
-        messageDone ? parseMessages(messages) : null;
+        messageDone && messages.length > 0 ? parseMessages(messages) : null;
     }, [messageDone]);
 
+    useEffect(() => {
+        setCharacterReq(messageParsed);
+    }, [messageParsed]);
+
     const parseMessages = async (messages) => {
-        console.log(messages, 'MESSAGES!!!!!!');
-        const parsed = JSON.parse(await stripMarkdown(messages[messages.length - 1].text));
-        console.log(parsed, 'PARSED!!!!!!');
-        setCharacterReq(parsed)
-    }
+        console.log(messages, 'PARSE MESSAGES!!!!!!');
+        // const stripedjson = await stripMarkdown(messages[messages.length - 1].text);
+        // const parsed = JSON.parse(stripedjson);
+        // console.log(parsed, 'PARSED!!!!!!');
+        // setMessageParsed(parsed)
+    };
 
     const submitActionResult = async (runId, toolCallOutputs) => {
         const response = await fetch(
@@ -100,7 +113,7 @@ const CharacterrReq = ({
     const handleTextDelta = (delta) => {
         if (delta.value != null) {
             appendToLastMessage(delta.value);
-        };
+        }
         if (delta.annotations != null) {
             annotateLastMessage(delta.annotations);
         }
@@ -109,7 +122,7 @@ const CharacterrReq = ({
     // imageFileDone - show image in chat
     const handleImageFileDone = (image) => {
         appendToLastMessage(`\n![${image.file_id}](/api/files/${image.file_id})\n`);
-    }
+    };
 
     // toolCallCreated - log new tool call
     const toolCallCreated = (toolCall) => {
@@ -140,11 +153,11 @@ const CharacterrReq = ({
         submitActionResult(runId, toolCallOutputs);
     };
 
-    // handleRunCompleted - re-enable the input form
-    const handleRunCompleted = () => {
+    // Call parseMessages directly in handleRunCompleted
+    const handleRunCompleted = async () => {
         setStartSpinner(false);
-        setMessageDone(true);
-        console.log(messages, 'ENDDONE!!!!!!');
+        await setMessageDone(true);
+        console.log('REQ MESSAGE DONE!!!!!!');
     };
 
     const handleReadableStream = (stream: AssistantStream) => {
@@ -182,7 +195,6 @@ const CharacterrReq = ({
             };
             return [...prevMessages.slice(0, -1), updatedLastMessage];
         });
-
     };
 
     const appendMessage = (role, text) => {
@@ -202,18 +214,24 @@ const CharacterrReq = ({
                         `/api/files/${annotation.file_path.file_id}`
                     );
                 }
-            })
+            });
             return [...prevMessages.slice(0, -1), updatedLastMessage];
         });
+    };
 
-    }
+    useEffect(() => {
+        if (messageDone && characterReq) {
+            // Render the component once the message is done and characterReq is available
+            console.log('Rendering the component...');
+        }
+    }, [messageDone, characterReq]);
 
     return (
         <div className="">
-
+            {/*
             {messageDone && characterReq ?
                 <CareerBarChart data={characterReq} /> :
-                startSpinner ? <Spinner /> : null}
+                startSpinner ? <Spinner /> : null} */}
         </div>
     );
 };
