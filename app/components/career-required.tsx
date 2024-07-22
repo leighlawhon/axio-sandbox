@@ -85,17 +85,29 @@ const CharacterReq = ({
                     method: "POST",
                     body: JSON.stringify({
                         content:
-                            `Pull all sections and corresponding data scores out of my uploaded profile file with the following JSON format:
+                            `based on my career choice of ${careertitle} and characteristics represented by the top-level headers and the description for each from the CAREER TRAINING POTENTIALS section of my uploaded profile, create a list of 5 of the top characteristics, based on the description, that are would be utilized to be sucessful  by a top performer with this career. 
+                    
+                        For the CAREER TRAINING POTENTIALS section:
+                        The my_score value should be the Raw Score Value.  
+                        The same_education_score and the population_score should pulled from the box with the raw score labeld 'Score Compared To'.
+                        
+                        based on my career choice of ${careertitle} and preferences represented by the top-level headers from the JOB SATISFACTION INDICATORS section of my uploaded profile, create a list of 5 of the top preference that are required to be sucessful in this career. 
+
+                        For the JOB SATISFACTION INDICATORS section:
+                        The preference_name value should be the header value for the section.
+                        The my_preference value should a categorization of strong or nuetral based on the text in the WHAT IT INDICATES section of the preference.
+
+                        Do not include comments or expalantions. Only return a JSON format. Return the infomation in the following JSON format:  
                         [
                             {
                                 career_training: {
-                                    "characteristic": string,
+                                    "characteristic": string, 
                                     "my_score": number,
                                     "population_score": string
                                     "same_education_score": string
                                 },
                                 job_satisfaction: {
-                                    "prefference_name" : string,
+                                    "prefference_name" : string, 
                                     "my_preference": string,
                                 }
                             }
