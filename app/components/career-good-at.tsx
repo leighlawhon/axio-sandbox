@@ -1,71 +1,104 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, use, Suspense } from "react";
 import styles from "./chat.module.css";
 import { AssistantStream } from "openai/lib/AssistantStream";
-import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/runs/runs";
-import Spinner from "./spinner";
-import { stripMarkdown, transformResponse } from "../utils/career-utlities";
+import Markdown from "react-markdown";
 // @ts-expect-error - no types for this yet
 import { AssistantStreamEvent } from "openai/resources/beta/assistants/assistants";
+import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/runs/runs";
+import Spinner from "./spinner";
+import { Tabs } from "@radix-ui/themes";
+import CareerTabs from "./career-tabs";
+import { parsedJSON, stripMarkdown } from "../utils/career-utlities";
+// import { UserMessage, AssistantMessage, CodeMessage } from "./career-ui-ele";
+
+type MessageProps = {
+    role: "user" | "assistant" | "code";
+    text: string;
+};
+
 
 type GoodAtProps = {
-    careertitle: string;
     functionCallHandler?: (
         toolCall: RequiredActionFunctionToolCall
     ) => Promise<string>;
+    careertitle: string;
 };
 
 const GoodAt = ({
-    careertitle,
     functionCallHandler = () => Promise.resolve(""), // default to return empty string
+    careertitle,
 }: GoodAtProps) => {
     const [messages, setMessages] = useState([]);
+    const [apiCalled, setApiCalled] = useState(false);
     const [threadId, setThreadId] = useState(null);
-    const [goodAt, setGoodAt] = useState<any>();
+    const [goodatContents, setGoodatContents] = useState([]);
     const [messageDone, setMessageDone] = useState(false);
+    const [callTypeProp, setCallTypeProp] = useState('');
     const [startSpinner, setStartSpinner] = useState(false);
-    console.log(goodAt, careertitle, threadId, 'GOODAT!!!!!!');
-    //send message for career to assistant
-    const handleWhyWouldIBeGood = async () => {
-        setStartSpinner(true);
-        const response = await fetch(
-            `/api/assistants/threads/${threadId}/messages`,
-            {
-                method: "POST",
-                body: JSON.stringify({
-                    content: `based on my career choice of ${careertitle} and my uploaded profile, proivde me with a list of reasons I would be good at this job, in an Arrray format with items in a String format only, without markdown. Only return an Array format. Do not include comments or expalantions.`,
-                }),
-            }
-        );
-        const stream = AssistantStream.fromReadableStream(response.body);
-        handleReadableStream(stream);
-    }
-
-    useEffect(() => {
-        messageDone ? parseMessages(messages) : null;
-    }, [messageDone]);
+    // automatically scroll to bottom of chat
 
     // create a new threadID when chat component created
     useEffect(() => {
         const createThread = async () => {
-            const res = await fetch(`/api/assistants/threads`, {
-                method: "POST",
-            });
-            const data = await res.json();
-            setThreadId(data.threadId);
+            try {
+                const res = await fetch(`/api/assistants/threads`, {
+                    method: "POST",
+                });
+                const data = await res.json();
+                setThreadId(data.threadId);
+            } catch (error) {
+                console.error("Error creating thread:", error);
+            }
         };
-        if (careertitle && !threadId) { // Add condition to check if threadId is already set
+        if (threadId === null) {
             createThread();
-            console.log(threadId, careertitle, 'THREADID!!!!!!');
         }
-    }, [careertitle, threadId]); // Add threadId as a dependency
+        console.log("NEW THREAD!!!!!!", threadId, typeof threadId, "test");
+    }, [careertitle]);
+    useEffect(() => {
+        if (threadId !== null && careertitle !== null && !apiCalled) {
+            console.log(threadId)
+            handleGetGoodAt(careertitle);
+            setApiCalled(true);
+        }
+    }), [threadId, careertitle, apiCalled];
+    useEffect(() => {
+        if (messageDone && callTypeProp === 'GETGOODAT') {
+            const goodAtParsed = parsedJSON(messages[messages.length - 1].text);
+            console.log(messages, messages.length, goodAtParsed, 'GOOD AT MESSAGE!!!!!!');
+            setGoodatContents(goodAtParsed);
+        };
+        scrollToBottom();
+    }, [messageDone, callTypeProp]);
 
-    const parseMessages = (messages) => {
-        const parsed = JSON.parse(stripMarkdown(messages[messages.length - 1].text));
-        console.log(parsed, 'PARSED!!!!!!');
-        setGoodAt(parsed)
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    const handleGetGoodAt = async (careertitle: string) => {
+        if (!threadId) return;
+        try {
+            console.log('GOOD AT CALL!!!!!!', threadId);
+            setStartSpinner(true);
+            const response = await fetch(
+                `/api/assistants/threads/${threadId}/messages`,
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        content: `based on my career choice of ${careertitle} and my uploaded profile, proivde me with a list of scenarios that illustrate how my top 3 traits for this job can be utlize for this job, in an Arrray format with items in a String format only, without markdown. Only return an Array format. Do not include comments or expalantions.`,
+                    }),
+                }
+            );
+            const stream = AssistantStream.fromReadableStream(response.body);
+            handleReadableStream(stream, "GETGOODAT");
+        } catch (error) {
+            console.error("Error getting career good at:", error);
+        }
     }
+
 
     const submitActionResult = async (runId, toolCallOutputs) => {
         const response = await fetch(
@@ -84,9 +117,11 @@ const GoodAt = ({
         const stream = AssistantStream.fromReadableStream(response.body);
         handleReadableStream(stream);
     };
-
-    /* Stream Event Handlers */
-
+    /*
+        =======================
+        === STREAM EVENTS ===
+        =======================
+      */
     // textCreated - create new assistant message
     const handleTextCreated = () => {
         appendMessage("assistant", "");
@@ -133,17 +168,19 @@ const GoodAt = ({
                 return { output: result, tool_call_id: toolCall.id };
             })
         );
+
         submitActionResult(runId, toolCallOutputs);
     };
 
     // handleRunCompleted - re-enable the input form
     const handleRunCompleted = () => {
+
         setStartSpinner(false);
         setMessageDone(true);
-        console.log(messages, 'ENDDONE!!!!!!');
     };
 
-    const handleReadableStream = (stream: AssistantStream) => {
+    const handleReadableStream = (stream: AssistantStream, callType?: string) => {
+        callType ? setCallTypeProp(callType) : setCallTypeProp('DEFAULT');
         // messages
         stream.on("textCreated", handleTextCreated);
         stream.on("textDelta", handleTextDelta);
@@ -207,15 +244,21 @@ const GoodAt = ({
     }
 
     return (
-        <div className="">
-            {messageDone && goodAt ?
-                <div>
-                    <ul>{goodAt.map((item, i) => {
-                        return <li key={`good-at-${i}`}>{item}</li>
-                    })}</ul>
-                </div> :
-                startSpinner ? <Spinner /> : null}
-        </div>
+        <>
+            {threadId && careertitle && messageDone && (<Suspense fallback={<div>Loading...</div>}>
+                <ul className="list-disc">
+                    {messageDone && careertitle ?
+                        goodatContents.map((goodatContent, index) => {
+                            return (
+                                <li key={index}>
+                                    {goodatContent}
+                                </li>
+                            )
+                        })
+                        : startSpinner ? <div className="flex justify-center"><Spinner /></div> : null}
+                </ul>
+            </Suspense>)}
+        </>
     );
 };
 

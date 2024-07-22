@@ -5,84 +5,110 @@ import styles from "./chat.module.css";
 import { AssistantStream } from "openai/lib/AssistantStream";
 import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/runs/runs";
 import Spinner from "./spinner";
-import { stripMarkdown, transformResponse } from "../utils/career-utlities";
 // @ts-expect-error - no types for this yet
 import { AssistantStreamEvent } from "openai/resources/beta/assistants/assistants";
 import CareerBarChart from "./bar-chart";
+import { parsedJSON } from "../utils/career-utlities";
+import * as Accordion from '@radix-ui/react-accordion';
+import { ChevronDownIcon } from '@radix-ui/react-icons';
 
 type CharacterReqtProps = {
     careertitle: string;
-    handleGetCareerReq: (careertitle: string) => void;
     functionCallHandler?: (
         toolCall: RequiredActionFunctionToolCall
     ) => Promise<string>;
 };
 
-const CharacterrReq = ({
+const CharacterReq = ({
     careertitle,
-    handleGetCareerReq,
     functionCallHandler = () => Promise.resolve(""), // default to return empty string
 }: CharacterReqtProps) => {
     const [messages, setMessages] = useState([]);
-    const [threadId, setThreadId] = useState("");
-    const [characterReq, setCharacterReq] = useState<any>([]);
-    const [messageParsed, setMessageParsed] = useState<any>([]);
+    const [threadId, setThreadId] = useState(null);
     const [messageDone, setMessageDone] = useState(false);
     const [startSpinner, setStartSpinner] = useState(false);
+    const [apiCalled, setApiCalled] = useState(false);
+    const [characterReq, setCharacterReq] = useState([]);
+    const [jobSat, setJobSat] = useState([]);
 
+    const [callTypeProp, setCallTypeProp] = useState('');
+
+    // create a new threadID when chat component created
     useEffect(() => {
         const createThread = async () => {
-            const res = await fetch(`/api/assistants/threads`, {
-                method: "POST",
-            });
-            const data = await res.json();
-            setThreadId(data.threadId);
-            console.log(data, careertitle, 'THREADID!!!!!!');
+            try {
+                const res = await fetch(`/api/assistants/threads`, {
+                    method: "POST",
+                });
+                const data = await res.json();
+                setThreadId(data.threadId);
+            } catch (error) {
+                console.error("Error creating thread:", error);
+            }
         };
-        if (careertitle !== "") {
+        if (threadId === null) {
             createThread();
         }
-    }, []);
-
+        console.log("NEW THREAD REQ!!!!!!", threadId, typeof threadId, "test");
+    }, [careertitle]);
     useEffect(() => {
-        const fetchData = async () => {
+        if (threadId !== null && careertitle !== null && !apiCalled) {
+            console.log(threadId)
+            handleGetReq(careertitle);
+            setApiCalled(true);
+        }
+    }), [threadId, careertitle, apiCalled];
+    useEffect(() => {
+        if (messageDone && callTypeProp === 'GETREQ') {
+            const reqAtParsed = parsedJSON(messages[messages.length - 1].text);
+            console.log(messages, messages.length, reqAtParsed, 'REQ MESSAGE!!!!!!');
+            setCharacterReq(reqAtParsed.map((item) => item.career_training));
+            setJobSat(reqAtParsed.map((item) => item.job_satisfaction));
+
+        };
+        scrollToBottom();
+    }, [messageDone, callTypeProp]);
+
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    const handleGetReq = async (careertitle: string) => {
+        if (!threadId) return;
+        try {
+            console.log('REQ CALL!!!!!!', threadId);
             setStartSpinner(true);
             const response = await fetch(
                 `/api/assistants/threads/${threadId}/messages`,
                 {
                     method: "POST",
                     body: JSON.stringify({
-                        content: `based on my career choice of ${careertitle} proivde me with a list of the characteristics that are required for this career. The characteristics for the career should be chosen from those that are in my uploaded profile. The my_score value should be the value from my uploaded profile. The career_score should be the 100 - my_score. Do not include comments or expalantions. Only return a JSON format. Each characteristic should be in the following JSON format:  
-                        - "characteristic": string, 
-                        - "my_score": number
-                        - "career_score": number`
+                        content:
+                            `Pull all sections and corresponding data scores out of my uploaded profile file with the following JSON format:
+                        [
+                            {
+                                career_training: {
+                                    "characteristic": string,
+                                    "my_score": number,
+                                    "population_score": string
+                                    "same_education_score": string
+                                },
+                                job_satisfaction: {
+                                    "prefference_name" : string,
+                                    "my_preference": string,
+                                }
+                            }
+                        ]`
                     }),
                 }
             );
-            console.log(response.body, 'RESPONSE BODY!!!!!!');
             const stream = AssistantStream.fromReadableStream(response.body);
-            handleReadableStream(stream);
-        };
-        if (threadId !== "") {
-            fetchData();
+            handleReadableStream(stream, "GETREQ");
+        } catch (error) {
+            console.error("Error getting career REQ:", error);
         }
-    }, [threadId]);
-
-    useEffect(() => {
-        messageDone && messages.length > 0 ? parseMessages(messages) : null;
-    }, [messageDone]);
-
-    useEffect(() => {
-        setCharacterReq(messageParsed);
-    }, [messageParsed]);
-
-    const parseMessages = async (messages) => {
-        console.log(messages, 'PARSE MESSAGES!!!!!!');
-        // const stripedjson = await stripMarkdown(messages[messages.length - 1].text);
-        // const parsed = JSON.parse(stripedjson);
-        // console.log(parsed, 'PARSED!!!!!!');
-        // setMessageParsed(parsed)
-    };
+    }
 
     const submitActionResult = async (runId, toolCallOutputs) => {
         const response = await fetch(
@@ -160,7 +186,8 @@ const CharacterrReq = ({
         console.log('REQ MESSAGE DONE!!!!!!');
     };
 
-    const handleReadableStream = (stream: AssistantStream) => {
+    const handleReadableStream = (stream: AssistantStream, callType?: string) => {
+        callType ? setCallTypeProp(callType) : setCallTypeProp('DEFAULT');
         // messages
         stream.on("textCreated", handleTextCreated);
         stream.on("textDelta", handleTextDelta);
@@ -219,21 +246,58 @@ const CharacterrReq = ({
         });
     };
 
-    useEffect(() => {
-        if (messageDone && characterReq) {
-            // Render the component once the message is done and characterReq is available
-            console.log('Rendering the component...');
-        }
-    }, [messageDone, characterReq]);
-
     return (
         <div className="">
-            {/*
-            {messageDone && characterReq ?
-                <CareerBarChart data={characterReq} /> :
-                startSpinner ? <Spinner /> : null} */}
+            <div className="QA text-sm mb-3">
+
+                <Accordion.Root className="AccordionRoot" type="single" defaultValue="" collapsible>
+                    <Accordion.Item className="AccordionItem" value="item-1" data-state="closed">
+                        <Accordion.Header>
+                            <Accordion.Trigger className="text-xs w-full relative" data-state="closed">
+                                <span className="font-bold text-xs ">QA against PDF</span>
+                                <ChevronDownIcon className="absolute right-1 top-0" />
+                            </Accordion.Trigger>
+                            <Accordion.Trigger />
+                        </Accordion.Header>
+                        <Accordion.Content>
+                            {characterReq.map((item, index) => {
+
+                                return (
+
+                                    <p className="text-xs" key={`career-content-${index}`}>
+                                        {Object.entries(item).map(([key, value]) => (
+                                            <span className="pr-2" key={`career-content-${key}`}>
+                                                {key}: {String(value)}
+                                            </span>
+                                        ))}
+                                    </p>
+
+
+                                )
+                            })}
+                            {jobSat.map((item, index) => {
+                                return (
+                                    <p className="text-xs" key={`job-sat-content-${index}`}>
+                                        {Object.entries(item).map(([key, value]) => (
+                                            <span className="pr-2" key={`job-sat-content-${key}`}>
+                                                {key}: {String(value)}
+                                            </span>
+                                        ))}
+                                    </p>
+                                );
+                            })}
+                        </Accordion.Content>
+                    </Accordion.Item>
+                </Accordion.Root>
+
+            </div>
+            {messageDone && characterReq ? (
+                <CareerBarChart data={characterReq} />
+            ) : startSpinner ? (
+                <Spinner />
+            ) : null}
         </div>
     );
 };
 
-export default CharacterrReq;
+export default CharacterReq;
