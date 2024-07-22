@@ -13,7 +13,6 @@ interface CareerBarChartProps {
 const CareerBarChart: React.FC<CareerBarChartProps> = ({ data }) => {
     const [activeIndex, setActiveIndex] = useState(0);
     const activeItem = data[activeIndex];
-    console.log(data, 'TESTING DATA');
     const handleClick = (index: number) => {
         setActiveIndex(index);
     };
@@ -34,7 +33,7 @@ const CareerBarChart: React.FC<CareerBarChartProps> = ({ data }) => {
 
                 </BarChart>
             </ResponsiveContainer>
-            <p>test</p>
+
 
         </div>
     );

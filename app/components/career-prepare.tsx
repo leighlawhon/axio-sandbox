@@ -1,36 +1,43 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, use, Suspense } from "react";
 import styles from "./chat.module.css";
 import { AssistantStream } from "openai/lib/AssistantStream";
-import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/runs/runs";
-import Spinner from "./spinner";
+import Markdown from "react-markdown";
 // @ts-expect-error - no types for this yet
 import { AssistantStreamEvent } from "openai/resources/beta/assistants/assistants";
-import CareerBarChart from "./bar-chart";
-import { parsedJSON } from "../utils/career-utlities";
-import QAAccordion from "./qa-accordian";
+import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/runs/runs";
+import Spinner from "./spinner";
+import { Tabs } from "@radix-ui/themes";
+import CareerTabs from "./career-tabs";
+import { parsedJSON, stripMarkdown } from "../utils/career-utlities";
+// import { UserMessage, AssistantMessage, CodeMessage } from "./career-ui-ele";
 
-type CharacterReqtProps = {
-    careertitle: string;
+type MessageProps = {
+    role: "user" | "assistant" | "code";
+    text: string;
+};
+
+
+type PrepareProps = {
     functionCallHandler?: (
         toolCall: RequiredActionFunctionToolCall
     ) => Promise<string>;
+    careertitle: string;
 };
 
-const CharacterReq = ({
-    careertitle,
+const CareerPrepare = ({
     functionCallHandler = () => Promise.resolve(""), // default to return empty string
-}: CharacterReqtProps) => {
+    careertitle,
+}: PrepareProps) => {
     const [messages, setMessages] = useState([]);
-    const [threadId, setThreadId] = useState(null);
-    const [messageDone, setMessageDone] = useState(false);
-    const [startSpinner, setStartSpinner] = useState(false);
     const [apiCalled, setApiCalled] = useState(false);
-    const [characterReq, setCharacterReq] = useState([]);
-    const [jobSat, setJobSat] = useState([]);
-
+    const [threadId, setThreadId] = useState(null);
+    const [prepareList, setPrepareList] = useState([]);
+    const [messageDone, setMessageDone] = useState(false);
     const [callTypeProp, setCallTypeProp] = useState('');
+    const [startSpinner, setStartSpinner] = useState(false);
+    // automatically scroll to bottom of chat
 
     // create a new threadID when chat component created
     useEffect(() => {
@@ -49,23 +56,23 @@ const CharacterReq = ({
             createThread();
         }
     }, [careertitle]);
+
     useEffect(() => {
         if (threadId !== null && careertitle !== null && !apiCalled) {
-            handleGetReq(careertitle);
+            handleGetPrepare(careertitle);
             setApiCalled(true);
         }
     }), [threadId, careertitle, apiCalled];
 
     useEffect(() => {
-        if (messageDone && callTypeProp === 'GETREQ') {
-            const reqAtParsed = JSON.parse(messages[messages.length - 1].text);
-            console.log(reqAtParsed, "reqAtParsed");
-            setCharacterReq(reqAtParsed.career_training);
-            setJobSat(reqAtParsed.job_satisfaction);
+        if (messageDone && callTypeProp === 'GETPREPARE') {
+            const preparedparsed = JSON.parse(messages[messages.length - 1].text);
+            console.log(preparedparsed, "preparedparsed");
+            setPrepareList(preparedparsed);
         }
     }, [messageDone, callTypeProp]);
 
-    const handleGetReq = async (careertitle: string) => {
+    const handleGetPrepare = async (careertitle: string) => {
         if (!threadId) return;
         try {
             setStartSpinner(true);
@@ -74,35 +81,28 @@ const CharacterReq = ({
                 {
                     method: "POST",
                     body: JSON.stringify({
-                        content:
-                            `Pull all sections and corresponding data scores out of my uploaded profile file.
-                            Do not include comments or expalantions. Output only plain text. Do not output markdown. Use the following JSON format:
+                        content: `based on my career choice of ${careertitle} and my uploaded profile, proivde me with a list of 3 tasks that I can do to prepare for a career in ${careertitle}. 
+                        Each task should have task_name, detailed_steps on how to accomplish the task, the task_time that it will take to complete the task, an estimated_cost for the task, and up to 3 resource_links from the internet that can help with the task.
+                        Do not include comments or expalantions. Output only plain text. Do not output markdown. Use the following JSON format:
+                        [
                             {
-                                career_training: [
-                                    {
-                                        "characteristic": string,
-                                        "my_score": number,
-                                        "population_score": string
-                                        "same_education_score": string
-                                    }
-                                ],
-                                job_satisfaction: [
-                                    {
-                                        "prefference_name" : string,
-                                        "my_preference": string,
-                                    }
-                                ]
+                                "task_name": string,
+                                "detailed_steps": string[],
+                                "task_time": string,
+                                "estimated_cost": string,
+                                "resource_links": [string, string, string]
                             }
-                        `
+                        ]`,
                     }),
                 }
             );
             const stream = AssistantStream.fromReadableStream(response.body);
-            handleReadableStream(stream, "GETREQ");
+            handleReadableStream(stream, "GETPREPARE");
         } catch (error) {
-            console.error("Error getting career REQ:", error);
+            console.error("Error getting career good at:", error);
         }
     }
+
 
     const submitActionResult = async (runId, toolCallOutputs) => {
         const response = await fetch(
@@ -121,9 +121,11 @@ const CharacterReq = ({
         const stream = AssistantStream.fromReadableStream(response.body);
         handleReadableStream(stream);
     };
-
-    /* Stream Event Handlers */
-
+    /*
+        =======================
+        === STREAM EVENTS ===
+        =======================
+      */
     // textCreated - create new assistant message
     const handleTextCreated = () => {
         appendMessage("assistant", "");
@@ -133,7 +135,7 @@ const CharacterReq = ({
     const handleTextDelta = (delta) => {
         if (delta.value != null) {
             appendToLastMessage(delta.value);
-        }
+        };
         if (delta.annotations != null) {
             annotateLastMessage(delta.annotations);
         }
@@ -142,7 +144,7 @@ const CharacterReq = ({
     // imageFileDone - show image in chat
     const handleImageFileDone = (image) => {
         appendToLastMessage(`\n![${image.file_id}](/api/files/${image.file_id})\n`);
-    };
+    }
 
     // toolCallCreated - log new tool call
     const toolCallCreated = (toolCall) => {
@@ -170,13 +172,14 @@ const CharacterReq = ({
                 return { output: result, tool_call_id: toolCall.id };
             })
         );
+
         submitActionResult(runId, toolCallOutputs);
     };
 
-    // Call parseMessages directly in handleRunCompleted
-    const handleRunCompleted = async () => {
+    // handleRunCompleted - re-enable the input form
+    const handleRunCompleted = () => {
         setStartSpinner(false);
-        await setMessageDone(true);
+        setMessageDone(true);
     };
 
     const handleReadableStream = (stream: AssistantStream, callType?: string) => {
@@ -200,6 +203,8 @@ const CharacterReq = ({
         });
     };
 
+
+
     /*
       =======================
       === Utility Helpers ===
@@ -215,6 +220,7 @@ const CharacterReq = ({
             };
             return [...prevMessages.slice(0, -1), updatedLastMessage];
         });
+
     };
 
     const appendMessage = (role, text) => {
@@ -234,23 +240,47 @@ const CharacterReq = ({
                         `/api/files/${annotation.file_path.file_id}`
                     );
                 }
-            });
+            })
             return [...prevMessages.slice(0, -1), updatedLastMessage];
         });
-    };
+
+    }
 
     return (
-        <div className="required">
-            <div className="QA text-sm mb-3">
-                <QAAccordion characterReq={characterReq} jobSat={jobSat} />
-            </div>
-            {messageDone && characterReq ? (
-                <CareerBarChart data={characterReq} />
-            ) : startSpinner ? (
-                <Spinner />
-            ) : null}
-        </div>
+        <>
+            {threadId && careertitle && messageDone && (<Suspense fallback={<Spinner />}>
+                <div className="list-none grid grid-cols-3">
+                    {messageDone && careertitle ?
+                        prepareList.map((prepareItem, index) => (
+                            <div className="pr-3" key={`prepare-${index}`}>
+                                <h4 className="text-md text-sky-900 font-bold">{prepareItem.task_name}</h4>
+                                <p><strong>Time to complete: </strong>{prepareItem.task_time}</p>
+                                <p><strong>Steps:</strong></p>
+                                <ol className="list-decimal  list-inside">
+                                    {
+                                        prepareItem.detailed_steps.map((step, index) => (<li key={`prepare-steps${index}`} >
+                                            {step}
+                                            <br />
+                                            <button className="mb-3 mt-1 border-2 px-2 border-sky-400 text-sky-400 font-bold border-solid rounded-md bg-white">Let's go!</button>
+                                        </li>))
+                                    }
+                                </ol>
+
+                                <p><strong>Estimated Cost: </strong>{prepareItem.estimated_cost}</p>
+                                <p><strong>Links</strong></p>
+                                <ul>
+                                    {prepareItem.resource_links.map((resource, index) => (
+                                        <li key={`resource-${index}`}>
+                                            <a href={resource} target="_blank" rel="noreferrer">{resource}</a>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )) : null}
+                </div>
+            </Suspense>)}
+        </>
     );
 };
 
-export default CharacterReq;
+export default CareerPrepare;

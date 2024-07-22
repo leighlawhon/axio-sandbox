@@ -3,6 +3,8 @@ import * as Tabs from '@radix-ui/react-tabs';
 import CareerGoodAt from './career-good-at';
 import CharacterReq from './career-required';
 import GoodAt from './career-good-at';
+import TopTraits from './career-toptraits';
+import CareerPrepare from './career-prepare';
 
 interface CareerTabsProps {
     // Define your props here
@@ -32,7 +34,6 @@ const CareerTabs = ({ tabArr, careerContents, canRender }: CareerTabsProps) => {
     useEffect(() => {
         if (tabArr.length > 0) {
             setCareerContentsDone(true);
-            console.log(canRender, careerContents, 'TEST CAN RENDER RENDERING TWICE');
         }
     }, []);
 
@@ -74,24 +75,38 @@ const RenderTabsContents = React.memo(({ activeTab, tabArr, careerContents }: Ca
             setCareerContentsDone(true);
         }
     }, []);
+    const rendervalue = (value: any) => {
+        if (typeof value === 'object') {
+            return Object.values(value).join(', ');
+        }
+        return value;
+    };
     return tabArr.map((contentTitle: any, tabIndex: number) => (
 
         <Tabs.Content className="TabsContent " key={`tab-content-${tabIndex}`} value={`tab-${tabIndex}`}>
-            <h3 className="text-lg font-bold text-center">Discover {contentTitle}</h3>
+            <h2 className="text-sky-600 text-xl font-bold text-center">Imagine a career as a {contentTitle}</h2>
             <CharacterReq careertitle={contentTitle} />
-            <div className="flex">
-                <div className=" pr-5">
-                    <h4 className="text-md font-bold">General Infomation</h4>
+            <div className=" career_banner p-1">
+                <ul className="list-none grid grid-cols-5 gap-4">
                     {Object.entries(careerContents[tabIndex]).map(([key, value]) => (
-                        <li key={`career-content-${tabIndex}-${key}`}>{key}: {value}</li>
+                        key !== 'career_name' ? <li className="text-xs" key={`career-content-${tabIndex}-${key}`}>{key}: {rendervalue(value)}</li> : null
                     ))}
+                </ul>
                 </div>
-                <div className="">
-                    <h4 className="text-md font-bold">Scenarios Utilizing My Strengths</h4>
+            <div className="grid grid-cols-6 h-fit mt-3">
+                <div className="col-span-2">
+                    <h3 className=" text-sky-600 text-lg mb-3 font-bold">Your future resume...</h3>
                     <GoodAt careertitle={contentTitle} />
                 </div>
+                <div className="col-span-4">
+                    <h3 className=" text-sky-600 text-lg  mb-3 font-bold">What it takes to succeed</h3>
+                    <div className="">
+                        <TopTraits careertitle={contentTitle} />
+                    </div>
+                </div>
             </div>
-
+            <h3 className=" text-sky-600 text-lg  mb-3 font-bold">Next Steps</h3>
+            <CareerPrepare careertitle={contentTitle} />
         </Tabs.Content>
 
 

@@ -29,7 +29,6 @@ const FileViewer = ({ titletext, onFileStatus }: { titletext: string, onFileStat
         method: "GET",
       });
       if (!resp.ok) {
-        console.log(resp, "____________________")
         throw new Error("Network response was not ok");
       }
       const data = await resp.json();
@@ -59,6 +58,7 @@ const FileViewer = ({ titletext, onFileStatus }: { titletext: string, onFileStat
       method: "DELETE",
       body: JSON.stringify({ fileId }),
     });
+    location.reload();
   };
 
   const handleFileUpload = async (event) => {
@@ -69,7 +69,8 @@ const FileViewer = ({ titletext, onFileStatus }: { titletext: string, onFileStat
       method: "POST",
       body: data,
     });
-    fetchFiles();
+    await fetchFiles();
+    location.reload();
   };
 
 

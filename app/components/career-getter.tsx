@@ -1,17 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useRef, use, Suspense } from "react";
-import styles from "./chat.module.css";
 import { AssistantStream } from "openai/lib/AssistantStream";
-import Markdown from "react-markdown";
 // @ts-expect-error - no types for this yet
 import { AssistantStreamEvent } from "openai/resources/beta/assistants/assistants";
 import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/runs/runs";
 import Spinner from "./spinner";
-import { Tabs } from "@radix-ui/themes";
 import CareerTabs from "./career-tabs";
 import { parsedJSON, stripMarkdown } from "../utils/career-utlities";
-// import { UserMessage, AssistantMessage, CodeMessage } from "./career-ui-ele";
 
 type MessageProps = {
   role: "user" | "assistant" | "code";
@@ -60,57 +56,43 @@ const CareerGetter = ({
     if (threadId === null) {
       createThread();
     }
-    console.log("NEW THREAD!!!!!!", threadId, "test");
   }, []);
 
   useEffect(() => {
-    console.log(messageDone, callTypeProp, messages, 'MESSAGE DONE!!!!!!');
     if (messageDone && callTypeProp === 'GETCAREERS') {
-
-      // apparently if there is only 1 item, JSON parse will mapping will return obj, rather than [obj]
-      const careerparsed = parsedJSON(messages[messages.length - 1].text);
-      console.log(careerparsed, canRender, 'TEST RENDER CAREER MESSAGE!!!!!!');
+      console.log(typeof messages[messages.length - 1].text, messages[messages.length - 1].text, "CHECKING PARSING");
+      const careerparsed = JSON.parse(messages[messages.length - 1].text);
+      console.log(careerparsed, "CAREER PARSED");
       setCanRender(true);
       setCareers(careerparsed);
       setCareertitles(careerparsed.map((career) => {
         return career.career_name
       }));
-      // setCareerContents((prevCareerContents) => [
-      //   ...prevCareerContents,
-      //   careerparsed
-      // ]);
-    };
+    }
+  }, [messageDone, callTypeProp, messages]);
 
-    scrollToBottom();
-  }, [messageDone]);
-
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
   //send message for career to assistant
   // content: `based on my career choice of ${careertitle} and my uploaded profile, proivde me with a list of reasons I would be good at this job, in an Arrray format with items in a String format only, without markdown. Only return an Array format. Do not include comments or expalantions.`,
 
   const handleGetCareers = async () => {
+    setInputDisabled(true);
     if (!threadId) return;
     try {
-      console.log("GET CAREERS CALL!!!!!!", threadId, "test");
-
       setStartSpinner(true);
       const response = await fetch(
         `/api/assistants/threads/${threadId}/messages`,
         {
           method: "POST",
           body: JSON.stringify({
-            content: `based on my profile from the uploaded document, proivde me with a list of 2 careers that I would be good at. Do not include comments or expalantions. Only return a JSON format. Each career should be in the following JSON format: 
+            content: `based on my profile from the uploaded document, proivde me with a list of 2 careers that I would be good at. Do not include comments or expalantions. Output only plain text. Do not output markdown. Each career should be in the following JSON format: 
             [ 
               {
-                'career_name': string,
-                'education': string,
-                'field_of_study': array,
-                'skills': array,
-                'job_outlook':string,
-                'median_salary': string},
+                "career_name": string,
+                "education": string,
+                "field_of_study": array,
+                "skills": array,
+                "job_outlook":string,
+                "median_salary": string},
               }
             ]`
 
@@ -194,13 +176,11 @@ const CareerGetter = ({
         return { output: result, tool_call_id: toolCall.id };
       })
     );
-    setInputDisabled(true);
     submitActionResult(runId, toolCallOutputs);
   };
 
   // handleRunCompleted - re-enable the input form
   const handleRunCompleted = () => {
-    setInputDisabled(false);
     setStartSpinner(false);
     setMessageDone(true);
   };
@@ -271,19 +251,21 @@ const CareerGetter = ({
 
   return (
     <div className="grid item-center">
-      <button className={"row-1 bg-blue-500 p-3 m-auto rounded-lg text-white"} onClick={handleGetCareers}>Recommend Jobs</button>
-      {/* {messageDone ? <CareerDisplay handleGetGoodAt={handleGetGoodAt} careers={careers} handleGetCareerReq={handleGetCareerReq} /> : startSpinner ? <div className="flex justify-center"><Spinner /></div> : null} */}
+      <button className={`${inputDisabled ? "disableButton" : ""} row-1 bg-blue-500 p-3 m-auto rounded-lg text-white`} onClick={handleGetCareers} disabled={inputDisabled}>
+        Recommend Jobs
+        {startSpinner ? <div className="flex justify-center"><Spinner /></div> : null}
+      </button>
       {
         careers.length > 0 && canRender &&
         <>
           {
-            canRender ?
+            careertitles.length > 0 ?
               <CareerTabs
                 canRender={canRender}
                 tabArr={careertitles}
                 careerContents={careers}
               />
-              : startSpinner ? <div className="flex justify-center"><Spinner /></div> : null
+              : null
           }
         </>
       }

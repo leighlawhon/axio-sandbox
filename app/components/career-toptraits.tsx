@@ -9,26 +9,26 @@ import Spinner from "./spinner";
 import { AssistantStreamEvent } from "openai/resources/beta/assistants/assistants";
 import CareerBarChart from "./bar-chart";
 import { parsedJSON } from "../utils/career-utlities";
-import QAAccordion from "./qa-accordian";
+import * as Accordion from '@radix-ui/react-accordion';
+import { ChevronDownIcon } from '@radix-ui/react-icons';
 
-type CharacterReqtProps = {
+type TopTraitstProps = {
     careertitle: string;
     functionCallHandler?: (
         toolCall: RequiredActionFunctionToolCall
     ) => Promise<string>;
 };
 
-const CharacterReq = ({
+const TopTraits = ({
     careertitle,
     functionCallHandler = () => Promise.resolve(""), // default to return empty string
-}: CharacterReqtProps) => {
+}: TopTraitstProps) => {
     const [messages, setMessages] = useState([]);
     const [threadId, setThreadId] = useState(null);
     const [messageDone, setMessageDone] = useState(false);
     const [startSpinner, setStartSpinner] = useState(false);
     const [apiCalled, setApiCalled] = useState(false);
-    const [characterReq, setCharacterReq] = useState([]);
-    const [jobSat, setJobSat] = useState([]);
+    const [topTraitsList, setTopTraitsList] = useState([]);
 
     const [callTypeProp, setCallTypeProp] = useState('');
 
@@ -51,23 +51,25 @@ const CharacterReq = ({
     }, [careertitle]);
     useEffect(() => {
         if (threadId !== null && careertitle !== null && !apiCalled) {
-            handleGetReq(careertitle);
+            console.log(threadId)
+            handleGetTopTraits(careertitle);
             setApiCalled(true);
         }
     }), [threadId, careertitle, apiCalled];
 
     useEffect(() => {
-        if (messageDone && callTypeProp === 'GETREQ') {
-            const reqAtParsed = JSON.parse(messages[messages.length - 1].text);
-            console.log(reqAtParsed, "reqAtParsed");
-            setCharacterReq(reqAtParsed.career_training);
-            setJobSat(reqAtParsed.job_satisfaction);
+        if (messageDone && callTypeProp === 'GETREQTRAITS') {
+            console.log('TRAITS PARSED!!!!!!', messages[messages.length - 1].text);
+            const traitsParsed = JSON.parse(messages[messages.length - 1].text);
+            setTopTraitsList(traitsParsed);
         }
     }, [messageDone, callTypeProp]);
 
-    const handleGetReq = async (careertitle: string) => {
+
+    const handleGetTopTraits = async (careertitle: string) => {
         if (!threadId) return;
         try {
+            console.log('REQTRAITSCALL!!!!!!', threadId);
             setStartSpinner(true);
             const response = await fetch(
                 `/api/assistants/threads/${threadId}/messages`,
@@ -75,30 +77,23 @@ const CharacterReq = ({
                     method: "POST",
                     body: JSON.stringify({
                         content:
-                            `Pull all sections and corresponding data scores out of my uploaded profile file.
-                            Do not include comments or expalantions. Output only plain text. Do not output markdown. Use the following JSON format:
-                            {
-                                career_training: [
-                                    {
-                                        "characteristic": string,
-                                        "my_score": number,
-                                        "population_score": string
-                                        "same_education_score": string
-                                    }
-                                ],
-                                job_satisfaction: [
-                                    {
-                                        "prefference_name" : string,
-                                        "my_preference": string,
-                                    }
-                                ]
-                            }
-                        `
+                            `Based on the selection of ${careertitle}, and the pulled traits from the profile file, what are the top 3 traits that are most important for success in this career?
+                            For each trait, provide a detailed summary of how my aptitude from my profile matches this trait, being sure to highlight if I need to improve in this area. 
+                            For the example of how the trait is used in the career, use an illustrative example.
+                            Do not include comments or expalantions. Output only plain text. Do not output markdown.
+                            Use the following JSON format:
+                            [
+                                {
+                                    "trait_name": string,
+                                    "my_aptitude": string,
+                                    "use_example": string
+                                }
+                            ]`
                     }),
                 }
             );
             const stream = AssistantStream.fromReadableStream(response.body);
-            handleReadableStream(stream, "GETREQ");
+            handleReadableStream(stream, "GETREQTRAITS");
         } catch (error) {
             console.error("Error getting career REQ:", error);
         }
@@ -177,6 +172,7 @@ const CharacterReq = ({
     const handleRunCompleted = async () => {
         setStartSpinner(false);
         await setMessageDone(true);
+        console.log('REQ MESSAGE DONE!!!!!!');
     };
 
     const handleReadableStream = (stream: AssistantStream, callType?: string) => {
@@ -240,12 +236,19 @@ const CharacterReq = ({
     };
 
     return (
-        <div className="required">
-            <div className="QA text-sm mb-3">
-                <QAAccordion characterReq={characterReq} jobSat={jobSat} />
-            </div>
-            {messageDone && characterReq ? (
-                <CareerBarChart data={characterReq} />
+        <div className="toptraits grid grid-cols-3  pl-4 border-s-4 border-gray-100">
+
+            {messageDone && topTraitsList ? (
+                topTraitsList.map((traitItem, index) => (
+                    <div key={`toptraits${index}`} className="col-span-1 pr-4">
+                        <h4 className="text-sky-900 text-md font-bold">{traitItem.trait_name}</h4>
+                        <button className="mb-3 mt-1 border-2 px-2 border-sky-400 text-sky-400 font-bold border-solid rounded-md bg-white">Take me to a course</button>
+                        <p><strong>My Aptitude: </strong>{traitItem.my_aptitude}</p>
+                        <p><strong>In the role: </strong>{traitItem.use_example}</p>
+                    </div>
+                ))
+
+                // </ul>
             ) : startSpinner ? (
                 <Spinner />
             ) : null}
@@ -253,4 +256,4 @@ const CharacterReq = ({
     );
 };
 
-export default CharacterReq;
+export default TopTraits;

@@ -76,17 +76,3 @@
         }
 }
 
-.QA {
-  background-color: rgb(244, 240, 208);
-  padding: 10px;
-}
-
-.recharts-label-list text tspan {
-  font-size: 10px;
-  fill: rgb(81, 81, 81);
-}
-
-.recharts-label-list text.text-white tspan {
-  font-size: 10px;
-  fill: white;
-}

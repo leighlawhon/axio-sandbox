@@ -55,22 +55,21 @@ const GoodAt = ({
         if (threadId === null) {
             createThread();
         }
-        console.log("NEW THREAD!!!!!!", threadId, typeof threadId, "test");
     }, [careertitle]);
+
     useEffect(() => {
         if (threadId !== null && careertitle !== null && !apiCalled) {
-            console.log(threadId)
             handleGetGoodAt(careertitle);
             setApiCalled(true);
         }
     }), [threadId, careertitle, apiCalled];
+
     useEffect(() => {
         if (messageDone && callTypeProp === 'GETGOODAT') {
-            const goodAtParsed = parsedJSON(messages[messages.length - 1].text);
-            console.log(messages, messages.length, goodAtParsed, 'GOOD AT MESSAGE!!!!!!');
-            setGoodatContents(goodAtParsed);
-        };
-        scrollToBottom();
+            const goodatparsed = JSON.parse(messages[messages.length - 1].text);
+            console.log(goodatparsed, "goodatparsed");
+            setGoodatContents(goodatparsed);
+        }
     }, [messageDone, callTypeProp]);
 
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -81,14 +80,20 @@ const GoodAt = ({
     const handleGetGoodAt = async (careertitle: string) => {
         if (!threadId) return;
         try {
-            console.log('GOOD AT CALL!!!!!!', threadId);
             setStartSpinner(true);
             const response = await fetch(
                 `/api/assistants/threads/${threadId}/messages`,
                 {
                     method: "POST",
                     body: JSON.stringify({
-                        content: `based on my career choice of ${careertitle} and my uploaded profile, proivde me with a list of scenarios that illustrate how my top 3 traits for this job can be utlize for this job, in an Arrray format with items in a String format only, without markdown. Only return an Array format. Do not include comments or expalantions.`,
+                        content: `based on my career choice of ${careertitle} and my uploaded profile, proivde me with a list of scenarios that illustrate how my top 3 traits (either career training or job satisfaction) and can be utlize for a successful career in ${careertitle}.  
+                        Speak in the past tense and use my name from my uploaded document. 
+                        Each scenario will have a trait_name followed by the example, 
+                        (ex: "Organizational Skills: Patrick meticulously planned several event logistics and ensured all details were covered.")  
+                        Do not include comments or expalantions. Output only plain text. Do not output markdown. Use the following JSON format:
+                        [
+                            {trait_name: string, example: string},
+                        ]`,
                     }),
                 }
             );
@@ -174,7 +179,6 @@ const GoodAt = ({
 
     // handleRunCompleted - re-enable the input form
     const handleRunCompleted = () => {
-
         setStartSpinner(false);
         setMessageDone(true);
     };
@@ -244,21 +248,19 @@ const GoodAt = ({
     }
 
     return (
-        <>
+        <div className="pr-3">
             {threadId && careertitle && messageDone && (<Suspense fallback={<div>Loading...</div>}>
-                <ul className="list-disc">
                     {messageDone && careertitle ?
                         goodatContents.map((goodatContent, index) => {
                             return (
-                                <li key={index}>
-                                    {goodatContent}
-                                </li>
+                                <p key={index}>
+                                    <strong>{goodatContent.trait_name}:</strong> {goodatContent.example}
+                                </p>
                             )
                         })
-                        : startSpinner ? <div className="flex justify-center"><Spinner /></div> : null}
-                </ul>
+                    : startSpinner ? <div className="flex justify-center"><Spinner /></div> : null}
             </Suspense>)}
-        </>
+        </div>
     );
 };
 

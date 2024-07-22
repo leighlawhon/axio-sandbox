@@ -278,6 +278,25 @@ input {
     box-shadow: 0 0 0 2px var(--green-7);
 }
 
-label.disableButton {
+label.disableButton,
+button.disableButton {
     background-color: #ccc;
+}
+.QA {
+    background-color: rgb(244, 240, 208);
+    padding: 10px;
+}
+
+.recharts-label-list text tspan {
+    font-size: 10px;
+    fill: rgb(81, 81, 81);
+}
+
+.recharts-label-list text.text-white tspan {
+    font-size: 10px;
+    fill: white;
+}
+
+.career_banner {
+    background-color: lightskyblue;
 }
