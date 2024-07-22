@@ -78,7 +78,7 @@ const TopTraits = ({
                     body: JSON.stringify({
                         content:
                             `Based on the selection of ${careertitle}, and the pulled traits from the profile file, what are the top 3 traits that are most important for success in this career?
-                            For each trait, provide a detailed summary of how my aptitude from my profile matches this trait, being sure to highlight if I need to improve in this area. 
+                            For each trait, provide a detailed description of how my aptitude from my profile matches this trait, being sure to highlight if I need to improve in this area. 
                             For the example of how the trait is used in the career, use an illustrative example.
                             Do not include comments or expalantions. Output only plain text. Do not output markdown.
                             Use the following JSON format:

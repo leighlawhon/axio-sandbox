@@ -96,6 +96,7 @@ const RenderTabsContents = React.memo(({ activeTab, tabArr, careerContents }: Ca
             <div className="grid grid-cols-6 h-fit mt-3">
                 <div className="col-span-2">
                     <h3 className=" text-sky-600 text-lg mb-3 font-bold">Your future resume...</h3>
+                    <button className="mb-3 mt-1 border-2 px-2 border-sky-400 text-sky-400 font-bold border-solid rounded-md bg-white">Work Portfolio</button>
                     <GoodAt careertitle={contentTitle} />
                 </div>
                 <div className="col-span-4">

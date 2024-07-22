@@ -8,23 +8,37 @@ import { AssistantStream } from "openai/lib/AssistantStream";
 import ChatCareer from "@/app/components/career-getter";
 const WOWI = () => {
     const [showUI, setShowUI] = useState<boolean>(false);
+    const [pageCodeVisible, setPageCodeVisible] = useState(false);
+    const envCode = process.env.NEXT_PUBLIC_BA_CODE
 
     const handleFileStatus = (status: string) => {
         console.log('Received file status:', status);
         status === 'completed' ? setShowUI(true) : setShowUI(false);
         // You can now use the file status in page.tsx
     };
-    return (
 
+    const checkCode = (event: React.ChangeEvent<HTMLInputElement>) => {
+        console.log(event.target.value, envCode)
+        if (event.target.value === envCode) {
+            setPageCodeVisible(true);
+        }
+
+    }
+    return (
         <main className={styles.main}>
-            <div className={`p-3 w-72 text-center m-auto`}>
-                <FileViewer titletext="Attach WOWI Results" onFileStatus={handleFileStatus} />
-            </div>
-            {showUI && (
-                <div >
-                    <div className={styles.chat}>
-                        <ChatCareer />
+            <input type="text" onChange={checkCode} />
+            {pageCodeVisible && (
+                <div>
+                    <div className={`p-3 w-72 text-center m-auto`}>
+                        <FileViewer titletext="Attach WOWI Results" onFileStatus={handleFileStatus} />
                     </div>
+                    {showUI && (
+                        <div >
+                            <div className={styles.chat}>
+                                <ChatCareer />
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </main>
