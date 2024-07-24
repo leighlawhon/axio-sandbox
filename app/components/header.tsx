@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import AxioMenu from './menu';
+import AxioMenu from './ui/menu';
 import styles from './header.module.css';
 interface HeaderProps {
     title: string;

@@ -58,7 +58,6 @@ const FileViewer = ({ titletext, onFileStatus }: { titletext: string, onFileStat
       method: "DELETE",
       body: JSON.stringify({ fileId }),
     });
-    location.reload();
   };
 
   const handleFileUpload = async (event) => {
@@ -70,7 +69,6 @@ const FileViewer = ({ titletext, onFileStatus }: { titletext: string, onFileStat
       body: data,
     });
     await fetchFiles();
-    location.reload();
   };
 
 

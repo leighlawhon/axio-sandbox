@@ -5,9 +5,9 @@ import { AssistantStream } from "openai/lib/AssistantStream";
 // @ts-expect-error - no types for this yet
 import { AssistantStreamEvent } from "openai/resources/beta/assistants/assistants";
 import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/runs/runs";
-import Spinner from "./spinner";
+import Spinner from "../ui/spinner";
 import CareerTabs from "./career-tabs";
-import { parsedJSON, stripMarkdown } from "../utils/career-utlities";
+import { parsedJSON, stripMarkdown } from "../../utils/career-utlities";
 
 type MessageProps = {
   role: "user" | "assistant" | "code";
@@ -43,7 +43,7 @@ const CareerGetter = ({
   useEffect(() => {
     const createThread = async () => {
       try {
-        const res = await fetch(`/api/assistants/threads`, {
+        const res = await fetch(`/api/assistants/careerthreads`, {
           method: "POST",
         });
         const data = await res.json();
@@ -80,7 +80,7 @@ const CareerGetter = ({
     try {
       setStartSpinner(true);
       const response = await fetch(
-        `/api/assistants/threads/${threadId}/messages`,
+        `/api/assistants/careerthreads/${threadId}/messages`,
         {
           method: "POST",
           body: JSON.stringify({

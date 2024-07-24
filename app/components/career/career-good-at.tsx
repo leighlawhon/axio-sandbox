@@ -1,42 +1,49 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, use, Suspense } from "react";
 import styles from "./chat.module.css";
 import { AssistantStream } from "openai/lib/AssistantStream";
-import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/runs/runs";
-import Spinner from "./spinner";
+import Markdown from "react-markdown";
 // @ts-expect-error - no types for this yet
 import { AssistantStreamEvent } from "openai/resources/beta/assistants/assistants";
-import CareerBarChart from "./bar-chart";
-import { parsedJSON } from "../utils/career-utlities";
-import * as Accordion from '@radix-ui/react-accordion';
-import { ChevronDownIcon } from '@radix-ui/react-icons';
+import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/runs/runs";
+import Spinner from "../ui/spinner";
+import { Tabs } from "@radix-ui/themes";
+import CareerTabs from "./career-tabs";
+import { parsedJSON, stripMarkdown } from "../../utils/career-utlities";
+// import { UserMessage, AssistantMessage, CodeMessage } from "./career-ui-ele";
 
-type TopTraitstProps = {
-    careertitle: string;
+type MessageProps = {
+    role: "user" | "assistant" | "code";
+    text: string;
+};
+
+
+type GoodAtProps = {
     functionCallHandler?: (
         toolCall: RequiredActionFunctionToolCall
     ) => Promise<string>;
+    careertitle: string;
 };
 
-const TopTraits = ({
-    careertitle,
+const GoodAt = ({
     functionCallHandler = () => Promise.resolve(""), // default to return empty string
-}: TopTraitstProps) => {
+    careertitle,
+}: GoodAtProps) => {
     const [messages, setMessages] = useState([]);
-    const [threadId, setThreadId] = useState(null);
-    const [messageDone, setMessageDone] = useState(false);
-    const [startSpinner, setStartSpinner] = useState(false);
     const [apiCalled, setApiCalled] = useState(false);
-    const [topTraitsList, setTopTraitsList] = useState([]);
-
+    const [threadId, setThreadId] = useState(null);
+    const [goodatContents, setGoodatContents] = useState([]);
+    const [messageDone, setMessageDone] = useState(false);
     const [callTypeProp, setCallTypeProp] = useState('');
+    const [startSpinner, setStartSpinner] = useState(false);
+    // automatically scroll to bottom of chat
 
     // create a new threadID when chat component created
     useEffect(() => {
         const createThread = async () => {
             try {
-                const res = await fetch(`/api/assistants/threads`, {
+                const res = await fetch(`/api/assistants/careerthreads`, {
                     method: "POST",
                 });
                 const data = await res.json();
@@ -49,59 +56,58 @@ const TopTraits = ({
             createThread();
         }
     }, [careertitle]);
+
     useEffect(() => {
         if (threadId !== null && careertitle !== null && !apiCalled) {
-            console.log(threadId)
-            handleGetTopTraits(careertitle);
+            handleGetGoodAt(careertitle);
             setApiCalled(true);
         }
     }), [threadId, careertitle, apiCalled];
 
     useEffect(() => {
-        if (messageDone && callTypeProp === 'GETREQTRAITS') {
-            console.log('TRAITS PARSED!!!!!!', messages[messages.length - 1].text);
-            const traitsParsed = JSON.parse(messages[messages.length - 1].text);
-            setTopTraitsList(traitsParsed);
+        if (messageDone && callTypeProp === 'GETGOODAT') {
+            const goodatparsed = JSON.parse(messages[messages.length - 1].text);
+            console.log(goodatparsed, "goodatparsed");
+            setGoodatContents(goodatparsed);
         }
     }, [messageDone, callTypeProp]);
 
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
 
-    const handleGetTopTraits = async (careertitle: string) => {
+    const handleGetGoodAt = async (careertitle: string) => {
         if (!threadId) return;
         try {
-            console.log('REQTRAITSCALL!!!!!!', threadId);
             setStartSpinner(true);
             const response = await fetch(
-                `/api/assistants/threads/${threadId}/messages`,
+                `/api/assistants/careerthreads/${threadId}/messages`,
                 {
                     method: "POST",
                     body: JSON.stringify({
-                        content:
-                            `Based on the selection of ${careertitle}, and the pulled traits from the profile file, what are the top 3 traits that are most important for success in this career?
-                            For each trait, provide a detailed description of how my aptitude from my profile matches this trait, being sure to highlight if I need to improve in this area. 
-                            For the example of how the trait is used in the career, use an illustrative example.
-                            Do not include comments or expalantions. Output only plain text. Do not output markdown.
-                            Use the following JSON format:
-                            [
-                                {
-                                    "trait_name": string,
-                                    "my_aptitude": string,
-                                    "use_example": string
-                                }
-                            ]`
+                        content: `based on my career choice of ${careertitle} and my uploaded profile, proivde me with a list of scenarios that illustrate how my top 3 traits (either career training or job satisfaction) and can be utlize for a successful career in ${careertitle}.  
+                        Speak in the past tense and use my name from my uploaded document. 
+                        Each scenario will have a trait_name followed by the example, 
+                        (ex: "Organizational Skills: Patrick meticulously planned several event logistics and ensured all details were covered.")  
+                        Do not include comments or expalantions. Output only plain text. Do not output markdown. Use the following JSON format:
+                        [
+                            {trait_name: string, example: string},
+                        ]`,
                     }),
                 }
             );
             const stream = AssistantStream.fromReadableStream(response.body);
-            handleReadableStream(stream, "GETREQTRAITS");
+            handleReadableStream(stream, "GETGOODAT");
         } catch (error) {
-            console.error("Error getting career REQ:", error);
+            console.error("Error getting career good at:", error);
         }
     }
 
+
     const submitActionResult = async (runId, toolCallOutputs) => {
         const response = await fetch(
-            `/api/assistants/threads/${threadId}/actions`,
+            `/api/assistants/careerthreads/${threadId}/actions`,
             {
                 method: "POST",
                 headers: {
@@ -116,9 +122,11 @@ const TopTraits = ({
         const stream = AssistantStream.fromReadableStream(response.body);
         handleReadableStream(stream);
     };
-
-    /* Stream Event Handlers */
-
+    /*
+        =======================
+        === STREAM EVENTS ===
+        =======================
+      */
     // textCreated - create new assistant message
     const handleTextCreated = () => {
         appendMessage("assistant", "");
@@ -128,7 +136,7 @@ const TopTraits = ({
     const handleTextDelta = (delta) => {
         if (delta.value != null) {
             appendToLastMessage(delta.value);
-        }
+        };
         if (delta.annotations != null) {
             annotateLastMessage(delta.annotations);
         }
@@ -137,7 +145,7 @@ const TopTraits = ({
     // imageFileDone - show image in chat
     const handleImageFileDone = (image) => {
         appendToLastMessage(`\n![${image.file_id}](/api/files/${image.file_id})\n`);
-    };
+    }
 
     // toolCallCreated - log new tool call
     const toolCallCreated = (toolCall) => {
@@ -165,14 +173,14 @@ const TopTraits = ({
                 return { output: result, tool_call_id: toolCall.id };
             })
         );
+
         submitActionResult(runId, toolCallOutputs);
     };
 
-    // Call parseMessages directly in handleRunCompleted
-    const handleRunCompleted = async () => {
+    // handleRunCompleted - re-enable the input form
+    const handleRunCompleted = () => {
         setStartSpinner(false);
-        await setMessageDone(true);
-        console.log('REQ MESSAGE DONE!!!!!!');
+        setMessageDone(true);
     };
 
     const handleReadableStream = (stream: AssistantStream, callType?: string) => {
@@ -196,6 +204,8 @@ const TopTraits = ({
         });
     };
 
+
+
     /*
       =======================
       === Utility Helpers ===
@@ -211,6 +221,7 @@ const TopTraits = ({
             };
             return [...prevMessages.slice(0, -1), updatedLastMessage];
         });
+
     };
 
     const appendMessage = (role, text) => {
@@ -230,30 +241,27 @@ const TopTraits = ({
                         `/api/files/${annotation.file_path.file_id}`
                     );
                 }
-            });
+            })
             return [...prevMessages.slice(0, -1), updatedLastMessage];
         });
-    };
+
+    }
 
     return (
-        <div className="toptraits grid grid-cols-3  pl-4 border-s-4 border-gray-100">
-
-            {messageDone && topTraitsList ? (
-                topTraitsList.map((traitItem, index) => (
-                    <div key={`toptraits${index}`} className="col-span-1 pr-4">
-                        <h4 className="text-sky-900 text-md font-bold">{traitItem.trait_name}</h4>
-                        <button className="mb-3 mt-1 border-2 px-2 border-sky-400 text-sky-400 font-bold border-solid rounded-md bg-white">Take me to a course</button>
-                        <p><strong>My Aptitude: </strong>{traitItem.my_aptitude}</p>
-                        <p><strong>In the role: </strong>{traitItem.use_example}</p>
-                    </div>
-                ))
-
-                // </ul>
-            ) : startSpinner ? (
-                <Spinner />
-            ) : null}
+        <div className="pr-3">
+            {threadId && careertitle && messageDone && (<Suspense fallback={<div>Loading...</div>}>
+                {messageDone && careertitle ?
+                    goodatContents.map((goodatContent, index) => {
+                        return (
+                            <p key={index}>
+                                <strong>{goodatContent.trait_name}:</strong> {goodatContent.example}
+                            </p>
+                        )
+                    })
+                    : startSpinner ? <div className="flex justify-center"><Spinner /></div> : null}
+            </Suspense>)}
         </div>
     );
 };
 
-export default TopTraits;
+export default GoodAt;

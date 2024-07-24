@@ -1,17 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useRef, use, Suspense } from "react";
-import styles from "./chat.module.css";
 import { AssistantStream } from "openai/lib/AssistantStream";
-import Markdown from "react-markdown";
 // @ts-expect-error - no types for this yet
 import { AssistantStreamEvent } from "openai/resources/beta/assistants/assistants";
 import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/runs/runs";
-import Spinner from "./spinner";
-import { Tabs } from "@radix-ui/themes";
-import CareerTabs from "./career-tabs";
-import { parsedJSON, stripMarkdown } from "../utils/career-utlities";
-// import { UserMessage, AssistantMessage, CodeMessage } from "./career-ui-ele";
+import Spinner from "../ui/spinner";
+import CareerTabs from "../career/career-tabs";
+import { parsedJSON, stripMarkdown } from "../../utils/career-utlities";
 
 type MessageProps = {
     role: "user" | "assistant" | "code";
@@ -19,94 +15,118 @@ type MessageProps = {
 };
 
 
-type PrepareProps = {
+type StoryBuilderProps = {
+    plots: { plot_title: string, plot_description: string }[];
+    protagonist: string;
+    ageGroup: string;
     functionCallHandler?: (
         toolCall: RequiredActionFunctionToolCall
     ) => Promise<string>;
-    careertitle: string;
 };
 
-const CareerPrepare = ({
+const StoryBuilder = ({
     functionCallHandler = () => Promise.resolve(""), // default to return empty string
-    careertitle,
-}: PrepareProps) => {
+    plots,
+    ageGroup,
+    protagonist,
+}: StoryBuilderProps) => {
+    const [userInput, setUserInput] = useState("");
     const [messages, setMessages] = useState([]);
-    const [apiCalled, setApiCalled] = useState(false);
+    const [inputDisabled, setInputDisabled] = useState(false);
     const [threadId, setThreadId] = useState(null);
-    const [prepareList, setPrepareList] = useState([]);
-    const [messageDone, setMessageDone] = useState(false);
+    const [storyBuilder, setStoryBuilder] = useState<{ scene_name: string, fictional_scene: string, scene_response_a: string, scene_response_b: string }[]>([{ scene_name: null, fictional_scene: null, scene_response_a: null, scene_response_b: null }]);
+    const [storyScenes, setStoryScenes] = useState([]);
+    const [storyPlotPoints, setStoryPlotPoints] = useState([]);
+
+    const [storyMessageDone, setMessageDone] = useState(false);
     const [callTypeProp, setCallTypeProp] = useState('');
     const [startSpinner, setStartSpinner] = useState(false);
-    // automatically scroll to bottom of chat
+    const apiResponseBuilderRef = useRef(null);
 
-    // create a new threadID when chat component created
+    const [newThreadCompleted, setNewThreadCompleted] = useState(false);
+
     useEffect(() => {
-        const createThread = async () => {
+        const createBuilderThread = async () => {
             try {
-                const res = await fetch(`/api/assistants/threads`, {
+                const res = await fetch(`/api/assistants/storybuilderthreads`, {
                     method: "POST",
                 });
                 const data = await res.json();
-                setThreadId(data.threadId);
+                apiResponseBuilderRef.current = data;
+                setNewThreadCompleted(true);
             } catch (error) {
                 console.error("Error creating thread:", error);
             }
         };
-        if (threadId === null) {
-            createThread();
+        // if (apiResponseBuilderRef.current === null) {
+        createBuilderThread();
+
+
+    }, []);
+    useEffect(() => {
+        if (newThreadCompleted && plots.length > 0) {
+            console.log(apiResponseBuilderRef.current, "NEW THREAD COMPLETED");
+            // if (plots.length > 0) {
+            //     getStoryBuilder(plots[0].plot_description);
+            // }
+
         }
-    }, [careertitle]);
+    }, [newThreadCompleted, plots]);
 
     useEffect(() => {
-        if (threadId !== null && careertitle !== null && !apiCalled) {
-            handleGetPrepare(careertitle);
-            setApiCalled(true);
+        if (storyMessageDone) {
+            console.log(messages[messages.length - 1].text, "STORY Builder MESSAGE");
+            const storyBuilderparsed = JSON.parse(messages[messages.length - 1].text);
+            console.log(storyBuilderparsed, "STORY Builder PARSED");
+            // if (storyBuilderparsed.fictional_scene === "") {
+            //     setStoryBuilder([storyBuilderparsed]);
+            // } else {
+            setStoryBuilder([...storyBuilder, storyBuilderparsed]);
+            // }
         }
-    }), [threadId, careertitle, apiCalled];
+    }, [storyMessageDone]);
 
-    useEffect(() => {
-        if (messageDone && callTypeProp === 'GETPREPARE') {
-            const preparedparsed = JSON.parse(messages[messages.length - 1].text);
-            console.log(preparedparsed, "preparedparsed");
-            setPrepareList(preparedparsed);
-        }
-    }, [messageDone, callTypeProp]);
-
-    const handleGetPrepare = async (careertitle: string) => {
-        if (!threadId) return;
-        try {
-            setStartSpinner(true);
-            const response = await fetch(
-                `/api/assistants/threads/${threadId}/messages`,
-                {
-                    method: "POST",
-                    body: JSON.stringify({
-                        content: `based on my career choice of ${careertitle} and my uploaded profile, proivde me with a list of 3 tasks that I can do to prepare for a career in ${careertitle}. 
-                        Each task should have task_name, detailed_steps on how to accomplish the task, the task_time that it will take to complete the task, an estimated_cost for the task, and up to 3 resource_links from the internet that can help with the task.
-                        Do not include comments or expalantions. Output only plain text. Do not output markdown. Use the following JSON format:
-                        [
-                            {
-                                "task_name": string,
-                                "detailed_steps": string[],
-                                "task_time": string,
-                                "estimated_cost": string,
-                                "resource_links": [string, string, string]
-                            }
-                        ]`,
-                    }),
-                }
-            );
-            const stream = AssistantStream.fromReadableStream(response.body);
-            handleReadableStream(stream, "GETPREPARE");
-        } catch (error) {
-            console.error("Error getting career good at:", error);
+    //send message for career to assistant
+    // content: `based on my career choice of ${careertitle} and my uploaded profile, proivde me with a list of reasons I would be good at this job, in an Arrray format with items in a String format only, without markdown. Only return an Array format. Do not include comments or expalantions.`,
+    const next_plot = (plotIndex: number) => {
+        if (plotIndex + 2 !== plots.length) {
+            return `For response A and response B actions they should lead to this plot ${plots[plotIndex + 2].plot_description} `
+        } else {
+            return '';
         }
     }
 
 
+    const getStoryBuilder = async (plotIndex: number, response) => {
+        if (!newThreadCompleted) return;
+        let next_scene = plots[plotIndex].plot_description
+        next_scene += response;
+        console.log("BUILDER API called", plots[plotIndex], apiResponseBuilderRef.current.threadId)
+        setInputDisabled(true);
+        try {
+            // plots.length === plotIndex ? setStartSpinner(false) : return;
+            setStartSpinner(true);
+            const response = await fetch(
+                `/api/assistants/storybuilderthreads/${apiResponseBuilderRef.current.threadId}/messages`,
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        content: `
+                        Write a scene for ${ageGroup} audience and this plot ${plots[plotIndex].plot_description}. ${next_plot(plotIndex)}. The response actions should only be for the protagonist, ${protagonist}.`
+                    }),
+                }
+            );
+            const stream = AssistantStream.fromReadableStream(response.body);
+            setMessageDone(false);
+            handleReadableStream(stream);
+        } catch (error) {
+            console.error("Error getting threeActStory:", error);
+        }
+    }
+
     const submitActionResult = async (runId, toolCallOutputs) => {
         const response = await fetch(
-            `/api/assistants/threads/${threadId}/actions`,
+            `/api/assistants/storybuilderthreads/${threadId}/actions`,
             {
                 method: "POST",
                 headers: {
@@ -172,7 +192,6 @@ const CareerPrepare = ({
                 return { output: result, tool_call_id: toolCall.id };
             })
         );
-
         submitActionResult(runId, toolCallOutputs);
     };
 
@@ -245,42 +264,43 @@ const CareerPrepare = ({
         });
 
     }
-
     return (
         <>
-            {threadId && careertitle && messageDone && (<Suspense fallback={<Spinner />}>
-                <div className="list-none grid grid-cols-3">
-                    {messageDone && careertitle ?
-                        prepareList.map((prepareItem, index) => (
-                            <div className="pr-3" key={`prepare-${index}`}>
-                                <h4 className="text-md text-sky-900 font-bold">{prepareItem.task_name}</h4>
-                                <p><strong>Time to complete: </strong>{prepareItem.task_time}</p>
-                                <p><strong>Steps:</strong></p>
-                                <ol className="list-decimal  list-inside">
-                                    {
-                                        prepareItem.detailed_steps.map((step, index) => (<li key={`prepare-steps${index}`} >
-                                            {step}
-                                            <br />
-                                            <button className="mb-3 mt-1 border-2 px-2 border-sky-400 text-sky-400 font-bold border-solid rounded-md bg-white">Let's go!</button>
-                                        </li>))
-                                    }
-                                </ol>
+            <button
+                onClick={() => {
+                    getStoryBuilder(0, `For response A and response B actions they should lead to this plot ${plots[1].plot_description} `);
+                }} className="mx-auto w-1/6 text-center mb-3 mt-1 border-2 px-2 border-sky-400 text-sky-400 font-bold border-solid rounded-md bg-white">
+                Start Story
+            </button>
+            {storyBuilder.map((scene, index) => {
+                return (
+                    <div className="w-5/6 m-auto" key={index}>
+                        <div>
+                            <div className="scene-image">
 
-                                <p><strong>Estimated Cost: </strong>{prepareItem.estimated_cost}</p>
-                                <p><strong>Links</strong></p>
-                                <ul>
-                                    {prepareItem.resource_links.map((resource, index) => (
-                                        <li key={`resource-${index}`}>
-                                            <a href={resource} target="_blank" rel="noreferrer">{resource}</a>
-                                        </li>
-                                    ))}
-                                </ul>
                             </div>
-                        )) : null}
-                </div>
-            </Suspense>)}
+                            <div>
+                                {scene.scene_name && <h3 className=" my-3 text-sky-700 text-md font-bold text-center">{scene.scene_name} (Scene: {index} of {plots.length + 1})</h3>}
+                                <div>{scene.fictional_scene}</div>
+                            </div>
+
+                        </div>
+                        {
+                            plots.length !== index && scene.scene_name ? (
+                                <div className="mt-3 flex">
+                                    <button onClick={() => {
+                                        getStoryBuilder(index, scene.scene_response_a)
+                                    }} className="mb-3 mr-2 mt-1 border-2 px-2 border-sky-400 text-sky-400 font-bold border-solid rounded-md bg-white">{scene.scene_response_a}</button>
+                                    <button onClick={() => {
+                                        getStoryBuilder(index, scene.scene_response_b)
+                                    }} className="mb-3 ml-2 mt-1 border-2 px-2 border-sky-400 text-sky-400 font-bold border-solid rounded-md bg-white">{scene.scene_response_b}</button>
+                                </div>) : null
+                        }
+                    </div>
+                )
+            })}
         </>
     );
 };
 
-export default CareerPrepare;
+export default StoryBuilder;

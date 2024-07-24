@@ -1,0 +1,15 @@
+
+.main {
+  display: block;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+    width: 100%;
+  background-color: white;
+}
+
+.container {
+  max-width: 300px;
+    margin: 1rem auto;
+    height: 50vh;
+}
