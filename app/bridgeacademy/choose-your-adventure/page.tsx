@@ -14,22 +14,25 @@ const ChooseAdventure = () => {
         // if (event.target.value === envCode) {
         setPageCodeVisible(true);
         // }
-
     }
+    const storyInterface = {
+        story_name: null,
+        story_characters: [{ character_name: null, character_description: null, character_type: null }],
+        story_plots: [{ plot_title: null, plot_description: null }]
+    };
     return (
         <main className={styles.main}>
             <input type="text" onChange={checkCode} />
             {/* {pageCodeVisible && ( */}
 
             <div className={styles.chat}>
-                <ChatHandler threadRoute="storyoutlinethreads">
+                <ChatHandler
+                    threadRoute="storyoutlinethreads"
+                    chatHandlerDataInitState={storyInterface}
+                >
                     <StoryOutline getChatHandler={function (content: string): void {
                         throw new Error("Function not implemented.");
-                    }} chatHandlerData={{
-                        story_name: "",
-                        story_characters: [],
-                        story_plots: []
-                    }} />
+                    }} chatHandlerData={storyInterface} />
                 </ChatHandler>
             </div>
 

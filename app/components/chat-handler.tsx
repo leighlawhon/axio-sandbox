@@ -14,80 +14,74 @@ type ChatHandlerProps = {
     functionCallHandler?: (
         toolCall: RequiredActionFunctionToolCall
     ) => Promise<string>;
+    chatHandlerDataInitState: any;
     children: React.ReactNode;
 };
 
 const ChatHandler: React.FC<ChatHandlerProps> = ({
+    chatHandlerDataInitState,
     threadRoute,
     functionCallHandler = () => Promise.resolve(""), // default to return empty string
     children,
 }) => {
     const [messages, setMessages] = useState<MessageProps[]>([]);
     const [inputDisabled, setInputDisabled] = useState(false);
-    const [threadId, setThreadId] = useState<string | null>(null);
-    const [chatHandlerData, setChatHandlerData] = useState<{
-        story_name: string;
-        story_characters: any[];
-        story_plots: { plot_title: string; plot_description: string }[];
-    }>({
-        story_name: "",
-        story_characters: [],
-        story_plots: [{ plot_title: "", plot_description: "" }],
-    });
+    const [chatHandlerData, setChatHandlerData] = useState<{} | []>(chatHandlerDataInitState);
     const [chatContent, setChatContent] = useState("");
-    const [storyPlotPoints, setStoryPlotPoints] = useState<any[]>([]);
-
     const [messageDone, setMessageDone] = useState(false);
-    const [callTypeProp, setCallTypeProp] = useState("");
+    const [fetchingData, setFetchingData] = useState(false);
+    const [threadStarted, setThreadStarted] = useState(false);
+    const [contentUpdated, setContentUpdated] = useState(false);
+
     const [startSpinner, setStartSpinner] = useState(false);
+    const [newThreadCompleted, setNewThreadCompleted] = useState(false);
+    // const fetchingDataRef = useRef(fetchingData); // Create a mutable reference
     const apiResponseRef = useRef<any>(null);
 
-    const [newThreadCompleted, setNewThreadCompleted] = useState(false);
-    const handleChildUpdate = () => {
-        // console.log('A child component was updated');
-    };
-
     useEffect(() => {
-        if (newThreadCompleted) {
-            // console.log(apiResponseRef.current, "NEW THREAD COMPLETED");
+        if (
+            (!contentUpdated && typeof apiResponseRef.current?.threadId !== 'undefined') &&
+            !fetchingData &&
+            chatContent !== ""
+        ) {
             tryFetch(chatContent);
         }
-    }, [newThreadCompleted]);
+    }, [apiResponseRef.current?.threadId, fetchingData, contentUpdated, chatContent]);
 
     useEffect(() => {
-        console.log(messages, "MESSAGES");
+        if (chatContent && typeof apiResponseRef.current?.threadId === 'undefined' && !fetchingData && !threadStarted) {
+            createThread();
+        }
+    }, [chatContent, apiResponseRef.current?.threadId, fetchingData]);
+
+    useEffect(() => {
         if (messageDone) {
-            const parsed = JSON.parse(messages[messages.length - 1].text);
+            setFetchingData(false);
+            console.log(messages[messages.length - 1].text, "MESSAGE BEFORE PARSED");
+            try {
+                const parsed = JSON.parse(messages[messages.length - 1].text);
+                setChatHandlerData(parsed);
+                setContentUpdated(true)
+            } catch (error) {
+                console.error("Error parsing JSON:", error, messages[messages.length - 1].text);
+            }
+            console.log("4.) MESSAGES PARSED");
             // console.log(parsed, "STORY PARSED");
-            setChatHandlerData(parsed);
         }
     }, [messageDone]);
 
     const getChatHandler = async (content: string) => {
-        // console.log("GET CHAT HANDLER CALLED", threadId);
+        console.log("1.) GET CHAT HANDLER CALLED", fetchingData, apiResponseRef.current?.threadId);
         setChatContent(content);
-        if (!threadId) {
-
-            await createThread();
-        } else {
-            // console.log('threadId already exists', threadId);
-            setNewThreadCompleted(true);
-            setMessageDone(false)
-            tryFetch(content);
-        }
-        // console.log(
-        //     "OUTLINE API called",
-        //     threadId
-        // );
-        // await tryFetch(chatContent);
     };
     const tryFetch = async (content: string) => {
-    // console.log("TRY FETCH CALLED");
+        setFetchingData(true);
+        console.log("3.) TRY FETCH CALLED", fetchingData);
         setInputDisabled(true);
         try {
             setStartSpinner(true);
             const response = await fetch(
-                `/api/assistants/${threadRoute}/${threadId}/messages`,
+                `/api/assistants/${threadRoute}/${apiResponseRef.current?.threadId}/messages`,
                 {
                     method: "POST",
                     body: JSON.stringify({
@@ -103,15 +97,16 @@ const ChatHandler: React.FC<ChatHandlerProps> = ({
     }
 
     const createThread = async () => {
-
+        setThreadStarted(true);
+        console.log("2.) CREATE THREAD CALLED", typeof apiResponseRef.current?.threadId === 'undefined', fetchingData);
         try {
             const res = await fetch(`/api/assistants/${threadRoute}`, {
                 method: "POST",
             });
             const data = await res.json();
             apiResponseRef.current = data;
-            setThreadId(data.threadId);
             setNewThreadCompleted(true);
+            console.log(data, "THREAD DATA", fetchingData, typeof apiResponseRef.current?.threadId === 'undefined');
         } catch (error) {
             console.error("Error creating thread:", error);
         }
@@ -122,7 +117,7 @@ const ChatHandler: React.FC<ChatHandlerProps> = ({
         toolCallOutputs: { output: string; tool_call_id: string }[]
     ) => {
         const response = await fetch(
-            `/api/assistants/${threadRoute}/${threadId}/actions`,
+            `/api/assistants/${threadRoute}/${apiResponseRef.current?.threadId}/actions`,
             {
                 method: "POST",
                 headers: {
@@ -190,10 +185,7 @@ const ChatHandler: React.FC<ChatHandlerProps> = ({
 
     const handleReadableStream = (
         stream: AssistantStream,
-        callType?: string
     ) => {
-        callType ? setCallTypeProp(callType) : setCallTypeProp("DEFAULT");
-
         stream.on("textCreated", handleTextCreated);
         stream.on("textDelta", handleTextDelta);
 
@@ -201,6 +193,28 @@ const ChatHandler: React.FC<ChatHandlerProps> = ({
 
         stream.on("toolCallCreated", toolCallCreated);
         stream.on("toolCallDelta", toolCallDelta);
+        stream.on("messageDone", async (event) => {
+            console.log(event, "MESSAGE DONE");
+            if (event.content[0].type === "text") {
+                const { text } = event.content[0];
+                // const { annotations } = text;
+                // const citations: string[] = [];
+
+                // let index = 0;
+                // for (let annotation of annotations) {
+                //     text.value = text.value.replace(annotation.text, "[" + index + "]");
+                //     const { file_citation } = annotation;
+                //     if (file_citation) {
+                //         const citedFile = await openai.files.retrieve(file_citation.file_id);
+                //         citations.push("[" + index + "]" + citedFile.filename);
+                //     }
+                //     index++;
+                // }
+
+                // console.log(text.value);
+                // console.log(citations.join("\n"));
+            }
+        });
 
         stream.on("event", (event) => {
             if (event.event === "thread.run.requires_action")
@@ -225,6 +239,7 @@ const ChatHandler: React.FC<ChatHandlerProps> = ({
     };
 
     const annotateLastMessage = (annotations: any[]) => {
+        // console.log(annotations, "ANNOTATIONS");    
         setMessages((prevMessages) => {
             const lastMessage = prevMessages[prevMessages.length - 1];
             const updatedLastMessage = {
@@ -241,15 +256,9 @@ const ChatHandler: React.FC<ChatHandlerProps> = ({
             return [...prevMessages.slice(0, -1), updatedLastMessage];
         });
     };
-
-    // return (
-    //     <div className="grid item-center">
-    //         {children(getChatHandler, chatHandlerData)}
-    //     </div>
-    // );
     return React.Children.map(children, (child: React.ReactElement<any>) => {
         // Enhancing each child with additional props
-        return React.cloneElement(child, { handleChildUpdate, getChatHandler, chatHandlerData });
+        return React.cloneElement(child, { messageDone, fetchingData, getChatHandler, chatHandlerData });
     });
 };
 

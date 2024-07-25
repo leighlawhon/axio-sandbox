@@ -37,18 +37,10 @@ const StoryBuilder = ({
         }
 
     }, [plots, chatHandlerData]);
-    useEffect(() => {
-        console.log(story, "EFFECT story");
-    }, [story]);
 
-    useEffect(() => {
-        // console.log(story, "story");
-    }, [story]);
     const next_plot = (plotIndex: number, response: string) => {
         console.log(plots.length, plotIndex, "NEXT PLOT");
-        // console.log(response, "RESPONSE")
-        // console.log(plots[plotIndex], "NEXT PLOT")
-        // console.log(plots[plotIndex + 1], "NEXTNEXT PLOT")
+
         if (plotIndex === plots.length) {
             return `For response A and response B actions they should lead to this plot ${response} `
         } else {

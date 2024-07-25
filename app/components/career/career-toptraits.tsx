@@ -7,7 +7,7 @@ import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/ru
 import Spinner from "../ui/spinner";
 // @ts-expect-error - no types for this yet
 import { AssistantStreamEvent } from "openai/resources/beta/assistants/assistants";
-import CareerBarChart from "../bar-chart";
+import CareerBarChart from "./bar-chart";
 import { parsedJSON } from "../../utils/career-utlities";
 import * as Accordion from '@radix-ui/react-accordion';
 import { ChevronDownIcon } from '@radix-ui/react-icons';

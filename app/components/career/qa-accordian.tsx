@@ -7,11 +7,21 @@ interface QAItem {
 }
 
 interface QAAccordionProps {
-    characterReq: string[];
-    jobSat: string[];
+    careerTraining: {
+        "characteristic": string,
+        "my_score": number,
+        "population_score": string,
+        "same_education_score": string
+    }[];
+    jobSat: {
+        "prefference_name": string,
+        "my_preference": string,
+    }[];
 }
 
-const QAAccordion: React.FC<QAAccordionProps> = ({ characterReq, jobSat }) => {
+const QAAccordion: React.FC<QAAccordionProps> = ({
+    careerTraining = [],
+    jobSat = [] }) => {
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
     const handleClick = (index: number) => {
@@ -30,7 +40,7 @@ const QAAccordion: React.FC<QAAccordionProps> = ({ characterReq, jobSat }) => {
                 </Accordion.Header>
                 <Accordion.Content>
                     <h5>CAREER TRAINING POTENTIALS</h5>
-                    {characterReq.map((item, index) => {
+                    {careerTraining.map((item, index) => {
                         return (
                             <p className="text-xs" key={`career-content-${index}`}>
                                 {Object.entries(item).map(([key, value]) => (

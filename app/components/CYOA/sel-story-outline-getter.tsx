@@ -19,6 +19,12 @@ const StoryOutline = ({
 }: StoryOutlineProps) => {
     const [ageGroup, setAgeGroup] = useState("any");
     const [submitted, setSubmitted] = useState(false);
+    const sceneInterface = {
+        scene_name: null,
+        fictional_scene: null,
+        scene_response_a: null,
+        scene_response_b: null,
+    };
 
     const handleInputSubmit = () => {
         const inputvalue = document.getElementById(
@@ -55,12 +61,14 @@ const StoryOutline = ({
             </div>}
             <hr className="mt-4" />
             {chatHandlerData.story_name ? <h2 className="text-lg text-center font-bold text-sky-600 mt-2">{chatHandlerData.story_name}</h2> : submitted ? <div className="flex item-centered"><Spinner /></div> : null}
-            <ChatHandler threadRoute="storybuilderthreads">
+            <ChatHandler
+                threadRoute="storybuilderthreads"
+                chatHandlerDataInitState={sceneInterface}>
                 <StoryBuilder 
                     getChatHandler={function (content: string): void {
                         throw new Error("Function not implemented.");
                     }}
-                    chatHandlerData={{ scene_name: null, fictional_scene: null, scene_response_a: null, scene_response_b: null }}
+                    chatHandlerData={sceneInterface}
                     plots={chatHandlerData.story_plots}
                     ageGroup={ageGroup} 
                     protagonist={chatHandlerData.story_characters.find((char) => char.character_type === "protagonist")?.character_name}

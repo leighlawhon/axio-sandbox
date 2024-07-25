@@ -23,6 +23,14 @@ const WOWI = () => {
         // }
 
     }
+    const careerInterface = [{
+        career_name: null,
+        education: null,
+        field_of_study: [''],
+        skills: [''],
+        job_outlook: null,
+        median_salary: null
+    }];
     return (
         <main className={styles.main}>
             <input type="text" onChange={checkCode} />
@@ -34,13 +42,20 @@ const WOWI = () => {
                     {showUI && (
 
                         <div >
-                        {/* <ChatHandler threadRoute="storyoutlinethreads">
-                            {(getChatHandler, chatHandlerData) => <CareerGetter getChatHandler={getChatHandler} chatHandlerData={chatHandlerData} />}
-                        </ChatHandler> */}
+                        <ChatHandler
+                            threadRoute="careerthreads"
+                            chatHandlerDataInitState={careerInterface}
+                        >
+                            <CareerGetter
+                                newThreadCompleted={false}
+                                fetchingData={false}
+                                messageDone={false}
+                                getChatHandler={function (content: string): void {
+                                    throw new Error("Function not implemented.");
+                                }}
+                                chatHandlerData={careerInterface} />
+                        </ChatHandler>
 
-                            <div className={styles.chat}>
-                            <CareerGetter />
-                            </div>
                         </div>
                     )}
                 </div>
