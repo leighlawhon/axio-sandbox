@@ -15,8 +15,8 @@ const AxioMenu = () => {
     const [person, setPerson] = React.useState('pedro');
 
     return (
-        <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
+        <DropdownMenu.Root >
+            <DropdownMenu.Trigger className="mr-3" asChild>
                 <button
                     id="menu"
                     className="rounded-full w-[35px] h-[35px] inline-flex items-center justify-center text-violet11 bg-white shadow-[0_2px_10px] shadow-blackA4 outline-none hover:bg-violet3 focus:shadow-[0_0_0_2px] focus:shadow-black"

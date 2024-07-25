@@ -17,12 +17,12 @@ const SelectAgeGroup = ({ onValueChange }: SelectAgeGroupProps): React.ReactElem
             </Select.Icon>
         </Select.Trigger>
         <Select.Portal>
-            <Select.Content className="SelectContent flex absolute overflow-hidden  bottom-1 ">
+            <Select.Content className="SelectContent w-full  flex absolute overflow-hidden top-10 ">
                 <Select.ScrollUpButton className="SelectScrollButton">
                     <ChevronUpIcon />
                 </Select.ScrollUpButton>
-                <Select.Viewport className="SelectViewport bg-white border-solid border-color-sky-600">
-                    <Select.Group>
+                <Select.Viewport className="SelectViewport bg-white ">
+                    <Select.Group className="bg-white border-solid border-color-sky-600">
                         {/* <Select.Label className="SelectLabel">Age Group</Select.Label> */}
                         <SelectItem value="any">Any</SelectItem>
                         <SelectItem value="child">Child</SelectItem>

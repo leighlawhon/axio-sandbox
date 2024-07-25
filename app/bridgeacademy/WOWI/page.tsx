@@ -4,6 +4,7 @@ import React, { Suspense, useContext, useEffect, useState } from "react";
 import styles from "./page.module.css"; // use simple styles for demonstration purposes
 import FileViewer from "@/app/components/file-viewer";
 import CareerGetter from "@/app/components/career/career-getter";
+import ChatHandler from "@/app/components/chat-handler";
 const WOWI = () => {
     const [showUI, setShowUI] = useState<boolean>(false);
     const [pageCodeVisible, setPageCodeVisible] = useState(false);
@@ -31,7 +32,12 @@ const WOWI = () => {
                         <FileViewer titletext="Attach WOWI Results" onFileStatus={handleFileStatus} />
                     </div>
                     {showUI && (
+
                         <div >
+                        {/* <ChatHandler threadRoute="storyoutlinethreads">
+                            {(getChatHandler, chatHandlerData) => <CareerGetter getChatHandler={getChatHandler} chatHandlerData={chatHandlerData} />}
+                        </ChatHandler> */}
+
                             <div className={styles.chat}>
                             <CareerGetter />
                             </div>

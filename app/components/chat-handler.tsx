@@ -4,31 +4,28 @@ import { AssistantStream } from "openai/lib/AssistantStream";
 import { AssistantStreamEvent } from "openai/resources/beta/assistants/assistants";
 import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/runs/runs";
 
-
 type MessageProps = {
     role: "user" | "assistant" | "code";
     text: string;
 };
 
 type ChatHandlerProps = {
-    children;
     threadRoute: string;
-    chatContent: string;
     functionCallHandler?: (
         toolCall: RequiredActionFunctionToolCall
     ) => Promise<string>;
+    children: React.ReactNode;
 };
 
-const ChatHandler = ({
+const ChatHandler: React.FC<ChatHandlerProps> = ({
     threadRoute,
-    chatContent,
-    children,
     functionCallHandler = () => Promise.resolve(""), // default to return empty string
-}: ChatHandlerProps) => {
+    children,
+}) => {
     const [messages, setMessages] = useState<MessageProps[]>([]);
     const [inputDisabled, setInputDisabled] = useState(false);
     const [threadId, setThreadId] = useState<string | null>(null);
-    const [ChatHandlerData, setChatHandlerData] = useState<{
+    const [chatHandlerData, setChatHandlerData] = useState<{
         story_name: string;
         story_characters: any[];
         story_plots: { plot_title: string; plot_description: string }[];
@@ -37,62 +34,64 @@ const ChatHandler = ({
         story_characters: [],
         story_plots: [{ plot_title: "", plot_description: "" }],
     });
-    const [ageGroup, setAgeGroup] = useState("any");
+    const [chatContent, setChatContent] = useState("");
     const [storyPlotPoints, setStoryPlotPoints] = useState<any[]>([]);
 
-    const [storyMessageDone, setMessageDone] = useState(false);
+    const [messageDone, setMessageDone] = useState(false);
     const [callTypeProp, setCallTypeProp] = useState("");
     const [startSpinner, setStartSpinner] = useState(false);
-    const apiResponseOutlineRef = useRef<any>(null);
+    const apiResponseRef = useRef<any>(null);
 
     const [newThreadCompleted, setNewThreadCompleted] = useState(false);
-
-    useEffect(() => {
-        const createThread = async () => {
-            try {
-                const res = await fetch(`/api/assistants/${threadRoute}`, {
-                    method: "POST",
-                });
-                const data = await res.json();
-                apiResponseOutlineRef.current = data;
-                setNewThreadCompleted(true);
-            } catch (error) {
-                console.error("Error creating thread:", error);
-            }
-        };
-
-        createThread();
-    }, []);
+    const handleChildUpdate = () => {
+        // console.log('A child component was updated');
+    };
 
     useEffect(() => {
         if (newThreadCompleted) {
-            console.log(apiResponseOutlineRef.current, "NEW THREAD COMPLETED");
+            // console.log(apiResponseRef.current, "NEW THREAD COMPLETED");
+            tryFetch(chatContent);
         }
     }, [newThreadCompleted]);
 
     useEffect(() => {
-        if (storyMessageDone) {
-            const ChatHandlerparsed = JSON.parse(
-                messages[messages.length - 1].text
-            );
-            console.log(ChatHandlerparsed, "STORY PARSED");
-            setChatHandlerData(ChatHandlerparsed);
+        console.log(messages, "MESSAGES");
+        if (messageDone) {
+            const parsed = JSON.parse(messages[messages.length - 1].text);
+            // console.log(parsed, "STORY PARSED");
+            setChatHandlerData(parsed);
         }
-    }, [storyMessageDone]);
+    }, [messageDone]);
 
+    const getChatHandler = async (content: string) => {
+        // console.log("GET CHAT HANDLER CALLED", threadId);
+        setChatContent(content);
+        if (!threadId) {
 
-    const getChatHandler = async () => {
-        if (!newThreadCompleted) return;
-        console.log("OUTLINE API called", apiResponseOutlineRef.current.threadId);
+            await createThread();
+        } else {
+            // console.log('threadId already exists', threadId);
+            setNewThreadCompleted(true);
+            setMessageDone(false)
+            tryFetch(content);
+        }
+        // console.log(
+        //     "OUTLINE API called",
+        //     threadId
+        // );
+        // await tryFetch(chatContent);
+    };
+    const tryFetch = async (content: string) => {
+    // console.log("TRY FETCH CALLED");
         setInputDisabled(true);
         try {
             setStartSpinner(true);
             const response = await fetch(
-                `/api/assistants/ChatHandlerthreads/${apiResponseOutlineRef.current.threadId}/messages`,
+                `/api/assistants/${threadRoute}/${threadId}/messages`,
                 {
                     method: "POST",
                     body: JSON.stringify({
-                        content: chatContent,
+                        content: content,
                     }),
                 }
             );
@@ -100,6 +99,21 @@ const ChatHandler = ({
             handleReadableStream(stream);
         } catch (error) {
             console.error("Error getting threeActStory:", error);
+        }
+    }
+
+    const createThread = async () => {
+
+        try {
+            const res = await fetch(`/api/assistants/${threadRoute}`, {
+                method: "POST",
+            });
+            const data = await res.json();
+            apiResponseRef.current = data;
+            setThreadId(data.threadId);
+            setNewThreadCompleted(true);
+        } catch (error) {
+            console.error("Error creating thread:", error);
         }
     };
 
@@ -138,7 +152,9 @@ const ChatHandler = ({
     };
 
     const handleImageFileDone = (image: any) => {
-        appendToLastMessage(`\n![${image.file_id}](/api/files/${image.file_id})\n`);
+        appendToLastMessage(
+            `\n![${image.file_id}](/api/files/${image.file_id})\n`
+        );
     };
 
     const toolCallCreated = (toolCall: any) => {
@@ -167,6 +183,7 @@ const ChatHandler = ({
     };
 
     const handleRunCompleted = () => {
+        // console.log("RUN COMPLETED");
         setStartSpinner(false);
         setMessageDone(true);
     };
@@ -225,11 +242,15 @@ const ChatHandler = ({
         });
     };
 
-    return (
-        <div className="grid item-center">
-            {children(getChatHandler, ChatHandlerData)}
-        </div>
-    );
+    // return (
+    //     <div className="grid item-center">
+    //         {children(getChatHandler, chatHandlerData)}
+    //     </div>
+    // );
+    return React.Children.map(children, (child: React.ReactElement<any>) => {
+        // Enhancing each child with additional props
+        return React.cloneElement(child, { handleChildUpdate, getChatHandler, chatHandlerData });
+    });
 };
 
 export default ChatHandler;

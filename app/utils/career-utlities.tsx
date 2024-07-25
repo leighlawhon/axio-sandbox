@@ -57,7 +57,9 @@ export const lowercaseKeys = (arr: { [key: string]: string }[] | { [key: string]
 export const parsedJSON = async (text: string) => {
     const stripped = await stripMarkdown(text);
     if (stripped) {
-        return JSON.parse(stripped);
+        const parsedObject = JSON.parse(stripped);
+        const lowercaseObject = lowercaseKeys(parsedObject);
+        return lowercaseObject;
     }
     return null;
 };
