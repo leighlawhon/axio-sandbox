@@ -5,10 +5,13 @@ import styles from "./page.module.css"; // use simple styles for demonstration p
 import FileViewer from "@/app/components/file-viewer";
 import CareerGetter from "@/app/components/career/career-getter";
 import ChatHandler from "@/app/components/chat-handler";
-const WOWI = () => {
+import { useAuth } from "@/app/components/AuthContext";
+
+const WOWI: React.FC = () => {
+
+    const { authenticated } = useAuth();
+
     const [showUI, setShowUI] = useState<boolean>(false);
-    const [pageCodeVisible, setPageCodeVisible] = useState(false);
-    const envCode = process.env.NEXT_PUBLIC_BA_CODE
 
     const handleFileStatus = (status: string) => {
         console.log('Received file status:', status);
@@ -16,13 +19,6 @@ const WOWI = () => {
         // You can now use the file status in page.tsx
     };
 
-    const checkCode = (event: React.ChangeEvent<HTMLInputElement>) => {
-        console.log(event.target.value, envCode)
-        // if (event.target.value === envCode) {
-            setPageCodeVisible(true);
-        // }
-
-    }
     const careerInterface = [{
         career_name: null,
         education: null,
@@ -31,37 +27,34 @@ const WOWI = () => {
         job_outlook: null,
         median_salary: null
     }];
+
     return (
         <main className={styles.main}>
-            <input type="text" onChange={checkCode} />
-            {/* {pageCodeVisible && ( */}
+            {authenticated && (
                 <div>
                     <div className={`p-3 w-72 text-center m-auto`}>
                         <FileViewer titletext="Attach WOWI Results" onFileStatus={handleFileStatus} />
                     </div>
                     {showUI && (
-
-                        <div >
-                        <ChatHandler
-                            threadRoute="careerthreads"
-                            chatHandlerDataInitState={careerInterface}
-                        >
-                            <CareerGetter
-                                newThreadCompleted={false}
-                                fetchingData={false}
-                                messageDone={false}
-                                getChatHandler={function (content: string): void {
-                                    throw new Error("Function not implemented.");
-                                }}
-                                chatHandlerData={careerInterface} />
-                        </ChatHandler>
-
+                        <div>
+                            <ChatHandler
+                                threadRoute="careerthreads"
+                                chatHandlerDataInitState={careerInterface}
+                            >
+                                <CareerGetter
+                                    fetchingData={false}
+                                    messageDone={false}
+                                    getChatHandler={function (content: string): void {
+                                        throw new Error("Function not implemented.");
+                                    }}
+                                    chatHandlerData={careerInterface}
+                                />
+                            </ChatHandler>
                         </div>
                     )}
                 </div>
-            {/* )} */}
+            )}
         </main>
-
     );
 };
 

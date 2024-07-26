@@ -10,7 +10,7 @@ interface SelectAgeGroupProps {
 
 const SelectAgeGroup = ({ onValueChange }: SelectAgeGroupProps): React.ReactElement => (
     <Select.Root onValueChange={onValueChange}>
-        <Select.Trigger className="w-full flex relative items-center justify-between SelectTrigger text-sky-600 rounded-md p-2 font-bold border-solid border-color-sky-600 agegroup" aria-label="Food">
+        <Select.Trigger className="w-full flex relative items-center justify-between SelectTrigger text-blue-600 rounded-md p-2 font-bold border-solid border-color-blue-600 agegroup" aria-label="Food">
             <Select.Value placeholder="Select an age group…" />
             <Select.Icon className="SelectIcon">
                 <ChevronDownIcon />
@@ -22,7 +22,7 @@ const SelectAgeGroup = ({ onValueChange }: SelectAgeGroupProps): React.ReactElem
                     <ChevronUpIcon />
                 </Select.ScrollUpButton>
                 <Select.Viewport className="SelectViewport bg-white ">
-                    <Select.Group className="bg-white border-solid border-color-sky-600">
+                    <Select.Group className="bg-white border-solid border-color-blue-600">
                         {/* <Select.Label className="SelectLabel">Age Group</Select.Label> */}
                         <SelectItem value="any">Any</SelectItem>
                         <SelectItem value="child">Child</SelectItem>

@@ -31,7 +31,6 @@ const ChatHandler: React.FC<ChatHandlerProps> = ({
     const [messageDone, setMessageDone] = useState(false);
     const [fetchingData, setFetchingData] = useState(false);
     const [threadStarted, setThreadStarted] = useState(false);
-    const [contentUpdated, setContentUpdated] = useState(false);
 
     const [startSpinner, setStartSpinner] = useState(false);
     const [newThreadCompleted, setNewThreadCompleted] = useState(false);
@@ -39,14 +38,16 @@ const ChatHandler: React.FC<ChatHandlerProps> = ({
     const apiResponseRef = useRef<any>(null);
 
     useEffect(() => {
+        console.log(typeof apiResponseRef.current?.threadId !== 'undefined', !fetchingData, chatContent !== "", "USE EFFECT");
         if (
-            (!contentUpdated && typeof apiResponseRef.current?.threadId !== 'undefined') &&
+
+            typeof apiResponseRef.current?.threadId !== 'undefined' &&
             !fetchingData &&
             chatContent !== ""
         ) {
             tryFetch(chatContent);
         }
-    }, [apiResponseRef.current?.threadId, fetchingData, contentUpdated, chatContent]);
+    }, [apiResponseRef.current?.threadId, fetchingData, chatContent]);
 
     useEffect(() => {
         if (chatContent && typeof apiResponseRef.current?.threadId === 'undefined' && !fetchingData && !threadStarted) {
@@ -61,7 +62,6 @@ const ChatHandler: React.FC<ChatHandlerProps> = ({
             try {
                 const parsed = JSON.parse(messages[messages.length - 1].text);
                 setChatHandlerData(parsed);
-                setContentUpdated(true)
             } catch (error) {
                 console.error("Error parsing JSON:", error, messages[messages.length - 1].text);
             }
@@ -181,6 +181,7 @@ const ChatHandler: React.FC<ChatHandlerProps> = ({
         // console.log("RUN COMPLETED");
         setStartSpinner(false);
         setMessageDone(true);
+        setChatContent("");
     };
 
     const handleReadableStream = (

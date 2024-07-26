@@ -48,7 +48,6 @@ const PDFData = ({
 
     useEffect(() => {
         if (!fetchingData) {
-            console.log("PDF DATA");
             handleGetReq(careertitle);
         }
     }), [];

@@ -8,14 +8,25 @@ type StoryOutlineProps = {
     getChatHandler: (content: string) => void;
     chatHandlerData: {
         story_name: string,
-        story_characters: { character_name: string, character_description: string, character_type: string }[],
-        story_plots: { plot_title: string, plot_description: string }[];
+        story_characters: {
+            character_name: string,
+            character_description: string,
+            character_type: string
+        }[],
+        story_plots: {
+            plot_title: string,
+            plot_description: string
+        }[];
     };
+    fetchingData: boolean;
+    messageDone: boolean;
 };
 
 const StoryOutline = ({
     getChatHandler,
     chatHandlerData,
+    fetchingData,
+    messageDone,
 }: StoryOutlineProps) => {
     const [ageGroup, setAgeGroup] = useState("any");
     const [submitted, setSubmitted] = useState(false);
@@ -30,7 +41,7 @@ const StoryOutline = ({
         const inputvalue = document.getElementById(
             "settheme"
         ) as HTMLInputElement;
-        getStoryOutline(inputvalue.value !== '' ? inputvalue.value : 'random');
+        getStoryOutline(inputvalue.value !== '' ? inputvalue.value : '');
         setSubmitted(true);
     };
 
@@ -41,7 +52,7 @@ const StoryOutline = ({
 
     return (
         <div className="grid item-center">
-            <h1 className="font-bold text-sky-600 text-xl text-center">Choose Your Adventure</h1>
+            <h1 className="font-bold text-blue-600 text-xl text-center">Choose Your Adventure</h1>
             {!submitted && <div className="lg:w-1/3 sm:w-1/2 mx-auto">
                 <label htmlFor="settheme" className="text-center leading-normal  text-xs">
                     Set Theme: (leave blank for AI to decide)
@@ -55,16 +66,18 @@ const StoryOutline = ({
                         className="grow mr-2 px-2 py-1 border-1 border-black border-solid"
                         placeholder="what is your story about?"
                     />{" "}
-                    <button className="border-2 px-2 py-1 border-sky-400 text-sky-400 font-bold border-solid rounded-md bg-white" onClick={handleInputSubmit}>Submit</button>
+                    <button className="border-2 px-2 py-1 border-blue-400 text-blue-400 font-bold border-solid rounded-md bg-white" onClick={handleInputSubmit}>Submit</button>
 
                 </div>
             </div>}
             <hr className="mt-4" />
-            {chatHandlerData.story_name ? <h2 className="text-lg text-center font-bold text-sky-600 mt-2">{chatHandlerData.story_name}</h2> : submitted ? <div className="flex item-centered"><Spinner /></div> : null}
+            {chatHandlerData.story_name ? <h2 className="text-lg text-center font-bold text-blue-600 mt-2">{chatHandlerData.story_name}</h2> : submitted ? <div className="flex item-centered"><Spinner /></div> : null}
             <ChatHandler
                 threadRoute="storybuilderthreads"
                 chatHandlerDataInitState={sceneInterface}>
                 <StoryBuilder 
+                    fetchingData={false}
+                    messageDone={false}
                     getChatHandler={function (content: string): void {
                         throw new Error("Function not implemented.");
                     }}
@@ -74,9 +87,6 @@ const StoryOutline = ({
                     protagonist={chatHandlerData.story_characters.find((char) => char.character_type === "protagonist")?.character_name}
                 />
             </ChatHandler>
-            {/* <ChatHandler threadRoute="storybuilderthreads" >
-                {(getChatHandler: (content: string) => void, chatHandlerData: any): React.ReactNode => <StoryBuilder getChatHandler={getChatHandler} chatHandlerData={chatHandlerData} plots={chatHandlerData.story_plots} ageGroup={ageGroup} protagonist={chatHandlerData.story_characters.find((char) => char.character_type === "protagonist")?.character_name} />}
-            </ChatHandler> */}
         </div>
     );
 };

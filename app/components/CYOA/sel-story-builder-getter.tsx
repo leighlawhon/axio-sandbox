@@ -7,15 +7,20 @@ import { AssistantStreamEvent } from "openai/resources/beta/assistants/assistant
 import { RequiredActionFunctionToolCall } from "openai/resources/beta/threads/runs/runs";
 import Spinner from "../ui/spinner";
 
-type MessageProps = {
-    role: "user" | "assistant" | "code";
-    text: string;
-};
-
 type StoryBuilderProps = {
-    chatHandlerData: { scene_name: string, fictional_scene: string, scene_response_a: string, scene_response_b: string };
+    chatHandlerData: {
+        scene_name: string,
+        fictional_scene: string,
+        scene_response_a: string,
+        scene_response_b: string
+    };
     getChatHandler: (content: string,) => void;
-    plots: { plot_title: string, plot_description: string }[];
+    fetchingData: boolean;
+    messageDone: boolean;
+    plots: {
+        plot_title: string,
+        plot_description: string
+    }[];
     protagonist: string;
     ageGroup: string;
 };
@@ -23,20 +28,20 @@ type StoryBuilderProps = {
 const StoryBuilder = ({
     chatHandlerData,
     getChatHandler,
+    fetchingData,
+    messageDone,
     plots,
     ageGroup,
     protagonist,
 }: StoryBuilderProps) => {
     const [story, setStory] = useState([]);
-    useEffect(() => {
-        plots.map((plot) => console.log(plot.plot_title, "PLOTS"));
 
-        // console.log(plots, chatHandlerData, "builder");
-        if (chatHandlerData.scene_name) {
+    useEffect(() => {
+        if (messageDone && !fetchingData) {
             setStory((prevStory) => [...prevStory, chatHandlerData]);
         }
+    }, [messageDone, plots, chatHandlerData]);
 
-    }, [plots, chatHandlerData]);
 
     const next_plot = (plotIndex: number, response: string) => {
         console.log(plots.length, plotIndex, "NEXT PLOT");
@@ -69,7 +74,7 @@ const StoryBuilder = ({
                     <button
                         onClick={() => {
                             getStoryBuilder(0, '');
-                        }} className="mx-auto w-1/6 text-center mb-3 mt-1 border-2 px-2 border-sky-400 text-sky-400 font-bold border-solid rounded-md bg-white">
+                        }} className="mx-auto w-1/6 text-center mb-3 mt-1 border-2 px-2 border-blue-400 text-blue-400 font-bold border-solid rounded-md bg-white">
                         Start Story
                     </button>
                     {story.length > 0 && story.map((scene, index) => {
@@ -80,7 +85,7 @@ const StoryBuilder = ({
 
                                     </div>
                                     <div>
-                                        {scene.scene_name && <h3 className=" my-3 text-sky-700 text-md font-bold text-center">{scene.scene_name} (Scene: {index + 1} of {plots.length})</h3>}
+                                        {scene.scene_name && <h3 className=" my-3 text-blue-700 text-md font-bold text-center">{scene.scene_name} (Scene: {index + 1} of {plots.length})</h3>}
                                         <div>{scene.fictional_scene}</div>
                                     </div>
 
@@ -90,10 +95,10 @@ const StoryBuilder = ({
                                         <div className="mt-3 flex">
                                             <button onClick={() => {
                                                 getStoryBuilder(index + 1, scene.scene_response_a)
-                                            }} className="mb-3 mr-2 mt-1 border-2 px-2 border-sky-400 text-sky-400 font-bold border-solid rounded-md bg-white">{scene.scene_response_a}</button>
+                                            }} className="mb-3 mr-2 mt-1 border-2 px-2 border-blue-400 text-blue-400 font-bold border-solid rounded-md bg-white">{scene.scene_response_a}</button>
                                             <button onClick={() => {
                                                 getStoryBuilder(index + 1, scene.scene_response_b)
-                                            }} className="mb-3 ml-2 mt-1 border-2 px-2 border-sky-400 text-sky-400 font-bold border-solid rounded-md bg-white">{scene.scene_response_b}</button>
+                                            }} className="mb-3 ml-2 mt-1 border-2 px-2 border-blue-400 text-blue-400 font-bold border-solid rounded-md bg-white">{scene.scene_response_b}</button>
                                         </div>) : <div className="text-center text-lg font-bold my-3">The End</div>
                                 }
                             </div>

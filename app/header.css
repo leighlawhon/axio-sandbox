@@ -1,4 +1,4 @@
-nav.navbar {
+header.navbar {
     background-color: #00071f;
 }
 
@@ -298,5 +298,5 @@ button.disableButton {
 }
 
 .career_banner {
-    background-color: lightskyblue;
+    background-color: lightblueblue;
 }

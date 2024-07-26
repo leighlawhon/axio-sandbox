@@ -58,10 +58,10 @@ const FutureResume = ({
         <div className="pr-3">
             {/* <Suspense fallback={<div><Spinner /></div>}> */}
             {
-                futureResume.map((goodatContent, index) => {
+                futureResume.map((futureResumeTrait, index) => {
                     return (
                         <p key={index}>
-                            <strong>{goodatContent.trait_name}:</strong> {goodatContent.example}
+                            <strong>{futureResumeTrait.trait_name}:</strong> {futureResumeTrait.example}
                         </p>
                     )
                 })

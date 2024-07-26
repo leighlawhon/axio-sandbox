@@ -19,7 +19,6 @@ type CareerGetterProps = {
   getChatHandler: (content: string) => void;
   messageDone: boolean;
   fetchingData: boolean;
-  newThreadCompleted: boolean;
   chatHandlerData: {
     career_name: string,
     education: string,
@@ -51,7 +50,6 @@ const CareerGetter = ({
       setCareertitles(chatHandlerData.map((career) => career.career_name));
     }
   }, [fetchingData]);
-
 
   const handleGetCareers = async () => {
     console.log("GET CAREERS");
