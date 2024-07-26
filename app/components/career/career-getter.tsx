@@ -36,7 +36,6 @@ const CareerGetter = ({
   chatHandlerData,
   messageDone,
   fetchingData,
-  newThreadCompleted
 }: CareerGetterProps) => {
 
   const [inputDisabled, setInputDisabled] = useState(false);
@@ -44,22 +43,15 @@ const CareerGetter = ({
   const [careertitles, setCareertitles] = useState([]);
   const [startSpinner, setStartSpinner] = useState(false);
 
-  const fetchingDataRef = useRef(fetchingData); // Create a mutable reference
-  useEffect(() => {
-    fetchingDataRef.current = fetchingData; // Update the reference when fetchingData changes
-  }, [fetchingData]);
-
 
   useEffect(() => {
-    if (messageDone && !fetchingDataRef.current) {
+    if (messageDone && !fetchingData) {
       console.log("CAREER DATA", chatHandlerData);
       setCareers(chatHandlerData)
       setCareertitles(chatHandlerData.map((career) => career.career_name));
     }
   }, [fetchingData]);
 
-  //send message for career to assistant
-  // content: `based on my career choice of ${careertitle} and my uploaded profile, proivde me with a list of reasons I would be good at this job, in an Arrray format with items in a String format only, without markdown. Only return an Array format. Do not include comments or expalantions.`,
 
   const handleGetCareers = async () => {
     console.log("GET CAREERS");

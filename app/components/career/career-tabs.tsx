@@ -1,11 +1,10 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
-import CareerGoodAt from './career-good-at';
 import PDFData from './career-pdf-data';
-import GoodAt from './career-good-at';
 import TopTraits from './career-toptraits';
 import CareerPrepare from './career-prepare';
 import ChatHandler from '../chat-handler';
+import FutureResume from './career-future-resume';
 
 interface CareerTabsProps {
     tabHeaderArr: string[];
@@ -78,6 +77,10 @@ const RenderTabsContents = React.memo(({ activeTab, tabHeaderArr, careerContents
         }
         return value;
     };
+    const futureResumeInterface = [{
+        trait_name: null,
+        example: null
+    }];
     const pdfDataInterface = {
         career_training: [
             {
@@ -105,7 +108,6 @@ const RenderTabsContents = React.memo(({ activeTab, tabHeaderArr, careerContents
                         throw new Error("Function not implemented.");
                     }}
                     messageDone={false}
-                    newThreadCompleted={false}
                     chatHandlerData={pdfDataInterface}
                     careertitle={contentTitle} />
             </ChatHandler>
@@ -120,7 +122,17 @@ const RenderTabsContents = React.memo(({ activeTab, tabHeaderArr, careerContents
                 <div className="col-span-2">
                     <h3 className=" text-sky-600 text-lg mb-3 font-bold">Your future resume...</h3>
                     <button className="mb-3 mt-1 border-2 px-2 border-sky-400 text-sky-400 font-bold border-solid rounded-md bg-white">Work Portfolio</button>
-                    {/* <GoodAt careertitle={contentTitle} /> */}
+                    <ChatHandler chatHandlerDataInitState={futureResumeInterface} threadRoute="careerthreads">
+                        <FutureResume
+                            fetchingData={false}
+                            getChatHandler={function (content: string): void {
+                                throw new Error("Function not implemented.");
+                            }}
+                            messageDone={false}
+                            chatHandlerData={futureResumeInterface}
+                            careertitle={contentTitle}
+                        />
+                    </ChatHandler>
                 </div>
                 <div className="col-span-4">
                     <h3 className=" text-sky-600 text-lg  mb-3 font-bold">What it takes to succeed</h3>

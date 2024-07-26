@@ -16,7 +16,6 @@ type PDFDataProps = {
     getChatHandler: (content: string) => void;
     fetchingData: boolean;
     messageDone: boolean;
-    newThreadCompleted: boolean;
     chatHandlerData: {
         career_training: {
             characteristic: string,
@@ -37,27 +36,25 @@ const PDFData = ({
     messageDone,
     fetchingData,
     chatHandlerData,
-    newThreadCompleted,
     careertitle,
 }: PDFDataProps) => {
-    const [startSpinner, setStartSpinner] = useState(false);
+    // const [startSpinner, setStartSpinner] = useState(false);
     const [careerTraining, setCareerTraining] = useState([]);
     const [jobSat, setJobSat] = useState([]);
-    const fetchingDataRef = useRef(fetchingData); // Create a mutable reference
-    useEffect(() => {
-        fetchingDataRef.current = fetchingData; // Update the reference when fetchingData changes
-    }, [fetchingData]);
+    // const fetchingDataRef = useRef(fetchingData); // Create a mutable reference
+    // useEffect(() => {
+    //     fetchingDataRef.current = fetchingData; // Update the reference when fetchingData changes
+    // }, [fetchingData]);
 
     useEffect(() => {
-        console.log(fetchingDataRef.current, newThreadCompleted, "FETCHING DATA PDF REF");
-        if (!fetchingDataRef.current) {
+        if (!fetchingData) {
             console.log("PDF DATA");
             handleGetReq(careertitle);
         }
     }), [];
 
     useEffect(() => {
-        if (messageDone && !fetchingDataRef.current) {
+        if (messageDone && !fetchingData) {
             setCareerTraining(chatHandlerData.career_training);
             setJobSat(chatHandlerData.job_satisfaction);
         }
